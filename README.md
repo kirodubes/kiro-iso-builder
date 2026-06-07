@@ -1,5 +1,5 @@
 # Kiro ISO Builder
-
+ 
 A GTK4 front-end that makes building the Kiro ISO clickable — and **corrects bad
 host settings before the build** instead of letting `mkarchiso` fail halfway. It is a
 front-end, not a reimplementation: the build pipeline stays in
