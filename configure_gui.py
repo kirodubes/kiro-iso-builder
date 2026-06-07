@@ -7,7 +7,7 @@ import gi
 import functions as fn
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 NVIDIA = ["open", "580xx", "390xx"]
 LOCATION = ["home", "local"]
@@ -105,6 +105,9 @@ class ConfigureScreen:
         reset = Gtk.Button(label="Reset to defaults")
         reset.connect("clicked", lambda _w: self._reset())
         nav.append(reset)
+        import_prof = Gtk.Button(label="Import build profile…")
+        import_prof.connect("clicked", lambda _w: self._import_profile())
+        nav.append(import_prof)
         nav.append(Gtk.Box(hexpand=True))  # spacer: pushes Back/Save to the right
         back = Gtk.Button(label="← Back")
         back.connect("clicked", lambda _w: self.window.navigate("preflight"))
@@ -197,3 +200,35 @@ class ConfigureScreen:
         fn.set_conf("remove_build_folder", "yes" if self.remove_build.get_active() else "no")
         fn.set_conf("build_location", LOCATION[self.location.get_selected()])
         self.window.navigate("packages")
+
+    # ── import a shareable build profile (settings + package selection) ─
+    def _import_profile(self):
+        if not fn.build_conf_path():
+            self.status.set_text("kiro-iso repo not found — fix it on the Pre-flight screen.")
+            return
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Import build profile")
+        dialog.set_initial_folder(Gio.File.new_for_path(str(fn.profiles_dir())))
+        flt = Gtk.FileFilter()
+        flt.set_name("Kiro build profiles")
+        flt.add_pattern(f"*{fn.PROFILE_EXT}")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(flt)
+        dialog.set_filters(filters)
+        dialog.open(self.window, None, self._on_profile_open_ready)
+
+    def _on_profile_open_ready(self, dialog, result):
+        try:
+            gfile = dialog.open_finish(result)
+        except GLib.Error:
+            return
+        if not gfile:
+            return
+        settings, excludes = fn.read_build_profile(gfile.get_path())
+        conf = fn.read_conf()
+        conf.update(settings)
+        self._apply(conf)
+        fn.write_excludes(excludes)
+        self.status.set_text(
+            f"Imported profile — {len(excludes)} package(s) to remove. "
+            "Review the settings, then click Save & Continue.")

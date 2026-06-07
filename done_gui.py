@@ -14,7 +14,7 @@ import gi
 import functions as fn
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 # UEFI firmware images shipped by edk2-ovmf (paths vary by version).
 _OVMF_CANDIDATES = (
@@ -93,6 +93,8 @@ class DoneScreen:
         self.vm_btn.connect("clicked", lambda _w: self._test_vm())
         self.install_btn = Gtk.Button(label="Install QEMU")
         self.install_btn.connect("clicked", lambda _w: self._install_qemu())
+        self.save_profile_btn = Gtk.Button(label="Save build profile…")
+        self.save_profile_btn.connect("clicked", lambda _w: self._save_profile())
         again = Gtk.Button(label="Build again")
         again.connect("clicked", lambda _w: self.window.navigate("preflight"))
         bar.append(self.open_btn)
@@ -100,6 +102,7 @@ class DoneScreen:
         bar.append(self.vbox_install_btn)
         bar.append(self.vm_btn)
         bar.append(self.install_btn)
+        bar.append(self.save_profile_btn)
         bar.append(again)
         self.widget.append(bar)
 
@@ -125,6 +128,7 @@ class DoneScreen:
 
     def _enable(self, on):
         self.open_btn.set_sensitive(on)
+        self.save_profile_btn.set_sensitive(on)
         has_vbox = fn.have("VBoxManage")
         self.vbox_btn.set_visible(has_vbox)
         self.vbox_btn.set_sensitive(on and has_vbox)
@@ -249,6 +253,29 @@ class DoneScreen:
         else:
             self._log(f"QEMU install failed (exit {code}).")
             self.install_btn.set_sensitive(True)
+
+    # ── save a shareable build profile (settings + package selection) ─
+    def _save_profile(self):
+        kernel = fn.read_conf().get("kernel", "").split()
+        suggested = f"kiro-{kernel[0]}{fn.PROFILE_EXT}" if kernel else f"kiro-build{fn.PROFILE_EXT}"
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Save build profile")
+        dialog.set_initial_name(suggested)
+        dialog.set_initial_folder(Gio.File.new_for_path(str(fn.profiles_dir())))
+        dialog.save(self.window, None, self._on_profile_save_ready)
+
+    def _on_profile_save_ready(self, dialog, result):
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return
+        if not gfile:
+            return
+        conf = fn.read_conf()
+        settings = {k: conf[k] for k in fn.PROFILE_SETTINGS_KEYS if k in conf}
+        excludes = fn.read_excludes()
+        fn.write_build_profile(gfile.get_path(), settings, excludes)
+        self._log(f"Saved build profile ({len(excludes)} package(s) removed) → {gfile.get_path()}")
 
     def _log(self, line):
         self.checks_buf.insert(self.checks_buf.get_end_iter(), line + "\n")

@@ -75,6 +75,22 @@ reimplementing it.
   a new self-contained `kiro-iso/build-scripts/unmount-build.sh` (`check` = read-only detect,
   `clean` = unmount) that derives the work dir the same way the build does — one source of truth
   shared by the Stop handler, the pre-flight check, and the CLI.
+- **build.conf is now a gitignored working copy** — the kiro-iso repo ships a tracked
+  `build.conf.defaults` and gitignores the live `build.conf`. `ensure_build_conf()` seeds it from
+  the defaults at app startup and after a clone (`refresh_paths`), so the GUI always has a real
+  config to read/write while the user's local build tweaks can never be committed/pushed back to
+  the repo.
+- **Shareable build profiles** — a build can now be saved as a named, shareable
+  `*.kiroprofile` that captures the **ISO-identity settings** (`desktop`, `kernel`,
+  `nvidia_driver`) **plus** the removed-package set, so someone else can reproduce the
+  same ISO recipe. **Save build profile…** lives on the Done screen (after a build),
+  **Import build profile…** on the Configure screen (it populates the settings controls
+  and writes `package-selection.conf`, so the Packages screen reflects it — then Save &
+  Continue). Host/workflow knobs (`build_location`, `clean_pacman_cache`,
+  `remove_build_folder`, `bump_version`) are deliberately **not** captured — they're
+  about the builder's machine, not the ISO. The file records the recipe, not a
+  byte-identical image (Kiro is rolling). The pre-existing package-only Save/Import
+  buttons were relabelled **Save/Import package list…** to distinguish them.
 
 ### Technical Details
 
@@ -96,3 +112,6 @@ reimplementing it.
   `run_cleanup_mounts`), `build_gui.py` (cleanup-on-abnormal-exit), `host_checks.py`
   (`check_stale_mounts`), `preflight_gui.py` (`unmount` fix). Pairs with new
   `kiro-iso/build-scripts/unmount-build.sh` + `INT`/`TERM` trap in `build-the-iso.sh`.
+- build.conf seeding: `functions.py` (`build_conf_defaults_path`, `ensure_build_conf`,
+  seed in `refresh_paths`), `kiro-iso-builder.py` (seed at startup). Pairs with
+  `kiro-iso`'s gitignored `build.conf` + tracked `build.conf.defaults`.

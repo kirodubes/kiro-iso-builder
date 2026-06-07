@@ -50,6 +50,7 @@ def refresh_paths():
     """Re-run discovery after a clone/locate; update module globals."""
     global BUILD_SCRIPTS
     BUILD_SCRIPTS = find_build_scripts()
+    ensure_build_conf()
     return BUILD_SCRIPTS
 
 
@@ -67,6 +68,22 @@ def unmount_build_script():
 
 def build_conf_path():
     return BUILD_SCRIPTS / "build.conf" if BUILD_SCRIPTS else None
+
+
+def build_conf_defaults_path():
+    return BUILD_SCRIPTS / "build.conf.defaults" if BUILD_SCRIPTS else None
+
+
+def ensure_build_conf():
+    """Seed the gitignored live build.conf from build.conf.defaults when missing.
+
+    The live build.conf is the GUI's working copy (gitignored so local tweaks
+    never leak into the repo); the tracked defaults carry the canonical values.
+    """
+    path = build_conf_path()
+    defaults = build_conf_defaults_path()
+    if path and defaults and defaults.is_file() and not path.is_file():
+        shutil.copy(defaults, path)
 
 
 def packages_file():
@@ -232,6 +249,55 @@ def write_exclude_file(path, excludes):
     """Write an exclude file (sorted, with header) to an arbitrary path."""
     body = "\n".join(sorted(excludes))
     Path(path).write_text(_EXCLUDE_HEADER + body + ("\n" if body else ""))
+
+
+# ── Build profiles (settings + package selection, shareable) ────────
+PROFILE_EXT = ".kiroprofile"
+# Only ISO-identity settings travel in a shared profile — not host/workflow
+# knobs (build_location, clean_pacman_cache, remove_build_folder, bump_version).
+PROFILE_SETTINGS_KEYS = ("desktop", "kernel", "nvidia_driver")
+
+_PROFILE_HEADER = (
+    "# Kiro ISO build profile — kiro-iso-builder\n"
+    "# Reproduces the build recipe (settings + removed packages), not a\n"
+    "# byte-identical image (Kiro is rolling — package versions move).\n\n"
+)
+
+
+def write_build_profile(path, settings, excludes):
+    """Write a *.kiroprofile: [settings] (ISO knobs) + [packages.excluded]."""
+    lines = [_PROFILE_HEADER, "[settings]\n"]
+    for key in PROFILE_SETTINGS_KEYS:
+        if key in settings:
+            val = settings[key]
+            rendered = f'"{val}"' if " " in val else val
+            lines.append(f"{key}={rendered}\n")
+    lines.append("\n[packages.excluded]\n")
+    lines += [f"{pkg}\n" for pkg in sorted(excludes)]
+    Path(path).write_text("".join(lines))
+
+
+def read_build_profile(path):
+    """Parse a *.kiroprofile into ({settings}, {excludes}); empty on failure."""
+    settings, excludes, section = {}, set(), None
+    try:
+        text = Path(path).read_text()
+    except OSError:
+        return settings, excludes
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("[") and s.endswith("]"):
+            section = s[1:-1]
+            continue
+        if section == "settings":
+            m = _ASSIGN_RE.match(line)
+            if m:
+                settings[m.group(1)] = m.group(2).split("#", 1)[0].strip().strip('"').strip("'")
+        elif section == "packages.excluded":
+            excludes.add(s)
+    return settings, excludes
 
 
 def read_excludes():

@@ -58,9 +58,9 @@ class PackagesScreen:
         self.widget.append(self.status)
 
         profile = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        save_prof = Gtk.Button(label="Save profile…")
+        save_prof = Gtk.Button(label="Save package list…")
         save_prof.connect("clicked", lambda _w: self._save_profile())
-        import_prof = Gtk.Button(label="Import profile…")
+        import_prof = Gtk.Button(label="Import package list…")
         import_prof.connect("clicked", lambda _w: self._import_profile())
         profile.append(save_prof)
         profile.append(import_prof)
