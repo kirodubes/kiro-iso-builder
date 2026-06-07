@@ -159,7 +159,7 @@ class DoneScreen:
             "'s/^Default machine folder: *//p')/$NAME\"\n"
             'VBoxManage createvm --name "$NAME" --ostype ArchLinux_64 --register\n'
             'VBoxManage modifyvm "$NAME" --memory 4096 --vram 128 --cpus 2 '
-            '--firmware efi --graphicscontroller vmsvga --boot1 dvd --boot2 disk\n'
+            '--firmware efi --graphicscontroller vmsvga --boot1 disk --boot2 dvd\n'
             'VBoxManage createmedium disk --filename "$VMDIR/$NAME.vdi" --size 50000\n'
             'VBoxManage storagectl "$NAME" --name SATA --add sata --controller IntelAhci\n'
             'VBoxManage storageattach "$NAME" --storagectl SATA --port 0 --device 0 '
@@ -208,7 +208,10 @@ class DoneScreen:
         disk = self._test_disk()
         if disk:
             cmd += ["-drive", f"file={disk},format=qcow2"]   # install target (>=25 GiB)
-        cmd += ["-boot", "d", "-cdrom", str(self.iso)]
+        # order=cd → hard disk first, CD-ROM fallback: an empty disk boots the ISO
+        # installer, but after install the reboot boots the installed system instead
+        # of looping back into the ISO.
+        cmd += ["-boot", "order=cd", "-cdrom", str(self.iso)]
         subprocess.Popen(cmd)
 
     def _test_disk(self):

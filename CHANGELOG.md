@@ -48,8 +48,11 @@ reimplementing it.
   identical lines.
 - **Done screen** — open `~/kiro-Out`, show checksums, and test-boot the ISO in **QEMU or
   VirtualBox**. Both create a throwaway **UEFI** VM (OVMF / `--firmware efi`, not legacy BIOS)
-  with a **50 GB disk** so the Calamares installer has a target, and both **overwrite** a single
-  reusable test VM/disk (`kiro-iso-builder-test`) — fresh every run, no clutter. When a
+  with a **50 GB disk** so the Calamares installer has a target. Boot order is **disk-first, CD
+  fallback** (QEMU `-boot order=cd`, VirtualBox `--boot1 disk --boot2 dvd`) so an empty disk boots
+  the ISO installer but the post-install reboot boots the installed system instead of looping the
+  ISO. Both **overwrite** a single reusable test VM/disk (`kiro-iso-builder-test`) — fresh every
+  run, no clutter. When a
   hypervisor is missing the button becomes **Install QEMU** / **Install VirtualBox** (pkexec) and
   flips back to Test once installed; the VirtualBox install (adapted from Erik's script) pulls
   `virtualbox` + `virtualbox-host-dkms`, the `-headers` for every installed kernel, loads and
