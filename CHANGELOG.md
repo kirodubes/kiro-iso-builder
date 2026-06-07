@@ -108,6 +108,10 @@ reimplementing it.
   the user's package selection** (backed up around `git reset --hard`; `build.conf` is gitignored
   so it survives on its own). Update is **excluded from Fix-all** — it's a deliberate action, not
   an unattended host-prep step.
+- **Build-location hint** — the Configure screen's Build location dropdown now shows, live, where
+  `kiro-build`/`kiro-Out` will actually land (`local → <repo-parent> (next to the repo)`,
+  `home → <home> (your home folder)`), so it's clear the build folders sit *beside* the repo, not
+  inside it.
 
 ### Technical Details
 

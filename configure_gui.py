@@ -91,7 +91,11 @@ class ConfigureScreen:
         self.remove_build = Gtk.Switch(valign=Gtk.Align.CENTER)
         advbox.append(_labelled("Remove build folder after build", self.remove_build))
         self.location = Gtk.DropDown.new_from_strings(LOCATION)
+        self.location.connect("notify::selected", lambda *_: self._update_location_hint())
         advbox.append(_labelled("Build location", self.location))
+        self.location_hint = Gtk.Label(xalign=0, wrap=True)
+        self.location_hint.add_css_class("dim-label")
+        advbox.append(self.location_hint)
         adv.set_child(advbox)
         form.append(adv)
 
@@ -147,6 +151,16 @@ class ConfigureScreen:
         self.clean.set_active(conf.get("clean_pacman_cache", "no") == "yes")
         self.remove_build.set_active(conf.get("remove_build_folder", "no") == "yes")
         self._select(self.location, LOCATION, conf.get("build_location", "home"))
+        self._update_location_hint()
+
+    def _update_location_hint(self):
+        loc = LOCATION[self.location.get_selected()]
+        base = fn.build_output_base(loc)
+        if base is None:
+            self.location_hint.set_text("→ builds next to the kiro-iso repo (set the repo on Pre-flight)")
+            return
+        where = "next to the repo" if loc == "local" else "your home folder"
+        self.location_hint.set_text(f"→ kiro-build / kiro-Out go in {base} ({where})")
 
     def _reset(self):
         self._apply(DEFAULTS)

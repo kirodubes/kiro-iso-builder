@@ -140,6 +140,15 @@ def repo_dir():
     return BUILD_SCRIPTS.parent if BUILD_SCRIPTS else None
 
 
+def build_output_base(location):
+    """Where kiro-build/kiro-Out land for a given build_location, mirroring
+    build-the-iso.sh: 'local' → beside the repo (its parent), else $HOME."""
+    if location == "local":
+        repo = repo_dir()
+        return repo.parent if repo else None
+    return Path.home()
+
+
 def git_fetch(repo, timeout=20):
     """True if `git fetch` succeeds — False on error/offline/timeout (so a
     freshness check degrades gracefully instead of hanging pre-flight)."""
