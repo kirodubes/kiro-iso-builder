@@ -10,6 +10,19 @@ First working version of the Kiro ISO Builder: a GTK4 (ATT-style, plain Gtk4 —
 libadwaita) front-end that drives `kiro-iso/build-scripts/build-the-iso.sh` rather than
 reimplementing it.
 
+### Window can be shrunk again
+
+- **Fixed: the window couldn't be dragged narrower.** A GTK4 `Gtk.Label` without
+  `wrap=True` requests its full single-line text as its *minimum* width, so the longest
+  unwrapped sentence on any Stack screen became the whole window's hard minimum width
+  (`set_default_size` only sets the *initial* size, not the floor). Added `wrap=True`
+  (with `max_width_chars=70` on the static subtitles) to every long label that lacked it:
+  the Pre-flight subtitle, the Configure subtitle / `_labelled` field labels / kernel &
+  status labels, and the Packages status label.
+- **Packages subtitle split into two lines** at the `ISO.` boundary for readability
+  (one wrapping label became two stacked labels in a vertical box).
+- Trimmed the initial window width 720 → 640.
+
 ### What Changed
 
 - **Four-screen wizard** (StackSidebar + Stack, ATT look): Pre-flight → Configure → Build → Done.
