@@ -11,7 +11,7 @@ import gi
 import functions as fn
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
 
 _PHASE_RE = re.compile(r"\bPhase\s+(\d+)\b")
 
@@ -169,11 +169,51 @@ class BuildScreen:
             self._log("── Stale build mounts found — cleaning up ──")
             fn.run_cleanup_mounts(self._log, self._on_cleanup_done)
         else:
-            self.start_btn.set_sensitive(True)
+            self._maybe_offer_remove_build()
 
     def _on_cleanup_done(self, code):
         self._log(f"── Mount cleanup {'done' if code == 0 else f'exit {code}'} ──")
         self.progress.set_text("cleaned up" if code == 0 else f"cleanup exit {code}")
+        self._maybe_offer_remove_build()
+
+    # ── confirm-gated removal of the (root-owned) build folder ──────
+    def _maybe_offer_remove_build(self):
+        # Unmounting (above) is automatic and safe. Removing the build folder
+        # deletes from the user's home, so it is NEVER automatic — ask first,
+        # default to Keep, and show the exact path.
+        if not fn.build_folder_present():
+            self.start_btn.set_sensitive(True)
+            return
+        path = fn.build_folder()
+        size = fn.build_folder_human_size()
+        size_txt = f"  (~{size})" if size else ""
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message("Remove the leftover build folder?")
+        dlg.set_detail(f"{path}{size_txt}\n\nIt's root-owned (mkarchiso ran as root), so you "
+                       "can't delete it from your file manager. Keeping it is fine — the next "
+                       "build reuses this location.")
+        dlg.set_buttons(["Keep", "Remove"])
+        dlg.set_default_button(0)   # safe default = Keep
+        dlg.set_cancel_button(0)
+        dlg.choose(self.window, None, self._on_remove_confirmed)
+
+    def _on_remove_confirmed(self, dlg, result):
+        try:
+            idx = dlg.choose_finish(result)
+        except GLib.Error:
+            self.start_btn.set_sensitive(True)
+            return
+        if idx != 1:   # Keep
+            self.start_btn.set_sensitive(True)
+            return
+        self.progress.set_text("removing build folder…")
+        self._log("── Removing build folder (with your approval) ──")
+        fn.run_remove_build_folder(self._log, self._on_removed)
+
+    def _on_removed(self, code):
+        self._log("── Build folder removed ──" if code == 0 else f"── Remove failed (exit {code}) ──")
+        self.progress.set_text("removed" if code == 0 else f"remove failed (exit {code})")
         self.start_btn.set_sensitive(True)
 
     # ── per-build log folder ────────────────────────────────────────

@@ -226,9 +226,9 @@ class PreflightScreen:
 
     # ── fixes ───────────────────────────────────────────────────────
     def _fix_all(self):
-        # Update is a deliberate, potentially-destructive action — never run it
-        # unattended inside the Fix-all batch.
-        self._fix_queue = [k for k in self.rows if k != "uptodate"]
+        # Update and build-folder removal are deliberate, potentially-destructive
+        # actions — never run them unattended inside the Fix-all batch.
+        self._fix_queue = [k for k in self.rows if k not in ("uptodate", "leftover_build")]
         self._next_in_queue()
 
     def _next_in_queue(self):
@@ -259,6 +259,8 @@ class PreflightScreen:
             fn.run_cleanup_mounts(self._log, done)
         elif kind == "update":
             self._update_repo(done)
+        elif kind == "removebuild":
+            self._remove_build_folder(done)
         elif kind == "clone":
             cmd = hc.clone_cmd()
             if cmd is None:
@@ -316,6 +318,36 @@ class PreflightScreen:
         self._log("kiro-iso updated." if code == 0 else f"[update failed] exit {code}")
         fn.refresh_paths()
         done(code)
+
+    # ── confirm-gated removal of the (root-owned) build folder ──────
+    def _remove_build_folder(self, done):
+        if not fn.build_folder_present():
+            done(0)
+            return
+        size = fn.build_folder_human_size()
+        size_txt = f"  (~{size})" if size else ""
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message("Remove the leftover build folder?")
+        dlg.set_detail(f"{fn.build_folder()}{size_txt}\n\nIt's root-owned (mkarchiso ran as root), "
+                       "so you can't delete it from your file manager. Keeping it is fine — the "
+                       "next build reuses this location.")
+        dlg.set_buttons(["Keep", "Remove"])
+        dlg.set_default_button(0)   # safe default = Keep
+        dlg.set_cancel_button(0)
+        dlg.choose(self.window, None, lambda d, r: self._on_remove_build_confirmed(d, r, done))
+
+    def _on_remove_build_confirmed(self, dlg, result, done):
+        try:
+            idx = dlg.choose_finish(result)
+        except GLib.Error:
+            done(0)
+            return
+        if idx != 1:   # Keep
+            done(0)
+            return
+        self._log("── Removing build folder (with your approval) ──")
+        fn.run_remove_build_folder(self._log, done)
 
     # ── log ─────────────────────────────────────────────────────────
     def _log(self, line):

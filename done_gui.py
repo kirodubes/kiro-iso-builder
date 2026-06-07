@@ -196,8 +196,10 @@ class DoneScreen:
 
     def _on_vbox_installed(self, code):
         if code == 0 and fn.have("VBoxManage"):
-            self._log("VirtualBox installed — if 'Test in VirtualBox' fails, log out and back in "
-                      "(to join the vboxusers group), then try again.")
+            self._log("VirtualBox installed. REBOOT now (a log-out is not enough) to load the "
+                      "host kernel modules and join the vboxusers group. Also: enable "
+                      "virtualization in your motherboard / BIOS-UEFI settings (Intel VT-x or "
+                      "AMD-V / SVM) — VirtualBox cannot run virtual machines without it.")
             self.vbox_install_btn.set_visible(False)
             self.vbox_btn.set_visible(True)
             self.vbox_btn.set_sensitive(True)

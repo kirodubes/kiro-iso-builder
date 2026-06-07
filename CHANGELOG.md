@@ -120,6 +120,21 @@ reimplementing it.
   archiso version, SUCCESS/FAILED). A Done-screen **"Open build log"** button opens the latest one.
   Prompted by a 390xx install failure where it wasn't clear what the ISO was actually built with.
 
+- **Confirm-gated removal of the root-owned build folder** — after a stopped/failed build the
+  app already unmounts the stale mounts (automatic, non-destructive). It now also offers to
+  **remove the leftover `kiro-build` work dir** — but **never automatically**: mkarchiso runs its
+  chroot as root, so the folder is root-owned and can't be deleted from a file manager, yet
+  deleting from the user's home demands an explicit OK. So a `Gtk.AlertDialog` (message + **exact
+  path** + size) asks first, **defaults to "Keep"**, and only an explicit **Remove** runs the
+  `pkexec` cleanup (unmount via `unmount-build.sh clean`, then `rm -rf` the resolved
+  `build_folder()` — never a broader/user-typed path). A pre-flight **"Leftover build folder"**
+  check surfaces one from a previous session with the same confirmed fix; it's excluded from
+  Fix-all (deliberate, confirm-only — like Update).
+- **VirtualBox post-install guidance** — after installing VirtualBox from the Done screen, the
+  note now says to **reboot** (a log-out isn't enough — the host kernel modules must load) and to
+  **enable virtualization in the motherboard/BIOS-UEFI** (Intel VT-x / AMD-V / SVM), without which
+  VirtualBox can't run VMs.
+
 ### Technical Details
 
 - **Privilege model:** app runs as the normal user (never root). Fixes elevate via

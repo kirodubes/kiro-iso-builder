@@ -149,6 +149,16 @@ def check_stale_mounts():
     return OK, "no stale build mounts", None
 
 
+def check_leftover_build_folder():
+    # A leftover kiro-build from a prior run is root-owned (mkarchiso ran as root)
+    # and can't be deleted from a file manager. Offer a confirmed removal.
+    if fn.repo_dir() is None:
+        return OK, "set once the kiro-iso repo is present", None
+    if fn.build_folder_present():
+        return WARN, f"leftover build folder {fn.build_folder()} (root-owned) — remove it", ("removebuild",)
+    return OK, "no leftover build folder", None
+
+
 def check_nvidia():
     conf = fn.read_conf()
     choice = conf.get("nvidia_driver", "open")
@@ -172,6 +182,7 @@ CHECKS = [
     ("cachyos", "CachyOS repo", check_cachyos),
     ("disk", "Free disk space", check_disk),
     ("stale_mounts", "Stale build mounts", check_stale_mounts),
+    ("leftover_build", "Leftover build folder", check_leftover_build_folder),
     ("kernels", "Kernel package(s)", check_kernels),
     ("nvidia", "NVIDIA driver choice", check_nvidia),
 ]

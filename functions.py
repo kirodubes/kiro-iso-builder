@@ -508,6 +508,42 @@ def run_cleanup_mounts(on_line, on_done):
     run_pipe(["pkexec", "bash", str(script), "clean"], on_line, on_done)
 
 
+def build_folder_present():
+    """True if the kiro-build work dir exists (a leftover to clean up)."""
+    bf = build_folder()
+    return bool(bf and bf.exists())
+
+
+def build_folder_human_size():
+    """Best-effort human size of the build folder ('' if unknown).
+
+    Run as the user, so root-owned subdirs may make this approximate — it's only
+    for the confirmation dialog, never for any decision.
+    """
+    bf = build_folder()
+    if not bf or not bf.exists():
+        return ""
+    out = cmd_out(["du", "-sh", str(bf)])
+    return out.split("\t")[0].split()[0] if out else ""
+
+
+def run_remove_build_folder(on_line, on_done):
+    """pkexec: unmount any stale mounts (via unmount-build.sh clean) then rm -rf
+    the build folder. DESTRUCTIVE — the GUI must confirm with the user first."""
+    bf = build_folder()
+    script = unmount_build_script()
+    if bf is None or script is None:
+        GLib.idle_add(on_line, "[error] build folder / unmount-build.sh path unknown")
+        GLib.idle_add(on_done, 1)
+        return
+    bf_q = shlex.quote(str(bf))
+    sc_q = shlex.quote(str(script))
+    # Unmount first (reuses the proven loop), then remove the now-quiet folder.
+    cmd = (f'bash {sc_q} clean; '
+           f'[ -d {bf_q} ] && rm -rf {bf_q} && echo "Removed {bf}" || echo "Nothing to remove: {bf}"')
+    run_pipe(["pkexec", "bash", "-c", cmd], on_line, on_done)
+
+
 # ── Runner 2: PTY (the build) — gives sudo a tty, smooth streaming ──
 # We force the build's sudo to use this sentinel as its prompt (SUDO_PROMPT),
 # so detection is locale-proof. Fall back to the default English prompt too.
