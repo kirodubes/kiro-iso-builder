@@ -27,7 +27,9 @@ reimplementing it.
   so each screen's own floor drops and the text reflows instead of forcing a single line.
 - **Packages subtitle split into two lines** at the `ISO.` boundary for readability
   (one wrapping label became two stacked labels in a vertical box).
-- Trimmed the initial window width 720 → 640.
+- Set the initial window width to 850px — wide enough that the Packages screen's two-line
+  subtitle reads as one full sentence per line at startup; the window can still be dragged
+  down to its ~760px minimum.
 
 ### What Changed
 

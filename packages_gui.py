@@ -33,7 +33,7 @@ class PackagesScreen:
         sub1 = Gtk.Label(
             label="All optional (TIER 3) apps ship by default — tick any you want REMOVED "
                   "from the ISO.",
-            xalign=0, wrap=True, max_width_chars=70)
+            xalign=0, wrap=True, max_width_chars=86)
         sub2 = Gtk.Label(
             label="Core packages always ship and aren't listed here.",
             xalign=0, wrap=True, max_width_chars=70)
