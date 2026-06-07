@@ -10,6 +10,7 @@ import fcntl
 import os
 import pty
 import re
+import shlex
 import shutil
 import struct
 import subprocess
@@ -131,6 +132,60 @@ def packages_file():
 
 def package_selection_path():
     return BUILD_SCRIPTS / "package-selection.conf" if BUILD_SCRIPTS else None
+
+
+# ── Repo freshness / update (git) ───────────────────────────────────
+def repo_dir():
+    """The kiro-iso repo root (parent of build-scripts), or None."""
+    return BUILD_SCRIPTS.parent if BUILD_SCRIPTS else None
+
+
+def git_fetch(repo, timeout=20):
+    """True if `git fetch` succeeds — False on error/offline/timeout (so a
+    freshness check degrades gracefully instead of hanging pre-flight)."""
+    if not have("git"):
+        return False
+    try:
+        r = subprocess.run(["git", "-C", str(repo), "fetch", "--quiet"],
+                           capture_output=True, timeout=timeout)
+        return r.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def commits_behind(repo):
+    """How many commits the local branch is behind its upstream (0 on any error)."""
+    out = cmd_out(["git", "-C", str(repo), "rev-list", "--count", "HEAD..@{u}"])
+    return int(out) if out.isdigit() else 0
+
+
+def repo_is_dirty(repo):
+    """True if the working tree has tracked changes (untracked/ignored ignored)."""
+    return bool(cmd_out(["git", "-C", str(repo), "status", "--porcelain",
+                         "--untracked-files=no"]))
+
+
+def git_pull_ff_argv(repo):
+    return ["git", "-C", str(repo), "pull", "--ff-only"]
+
+
+def git_force_update_argv(repo, selection_path):
+    """Reset the clone to its upstream, preserving the user's package selection.
+
+    Used when the tree is dirty (build byproducts block a fast-forward). build.conf
+    is gitignored so it survives reset untouched; package-selection.conf is tracked,
+    so it's backed up and restored around the reset.
+    """
+    repo_q = shlex.quote(str(repo))
+    sel_q = shlex.quote(str(selection_path))
+    script = (
+        f'sel={sel_q}; bak=""; '
+        f'[ -f "$sel" ] && bak="$(mktemp)" && cp "$sel" "$bak"; '
+        f'git -C {repo_q} fetch origin && git -C {repo_q} reset --hard @{{u}} || exit 1; '
+        f'[ -n "$bak" ] && cp "$bak" "$sel" && rm -f "$bak"; '
+        f'echo "Updated to the latest; your package selection was preserved."'
+    )
+    return ["bash", "-c", script]
 
 
 PROFILES_DIR = CONFIG_DIR / "profiles"

@@ -100,6 +100,14 @@ reimplementing it.
   persisted to `~/.config/kiro-iso-builder/repo_path` and tried first by repo discovery, so
   it survives a relaunch. Distinct from the `build_location` knob (which only moves
   `kiro-build`/`kiro-Out`).
+- **Keep the kiro-iso clone up to date** — a new Pre-flight check **"kiro-iso up to date"**
+  fetches and reports how many commits the clone is behind origin (offline → graceful WARN, no
+  button), so users don't build from stale scripts/package lists. Its **Update** fix
+  fast-forwards a clean tree (`git pull --ff-only`); when the tree is dirty from a previous build
+  (the version bump seds tracked files), it offers a confirmed reset to the latest that **keeps
+  the user's package selection** (backed up around `git reset --hard`; `build.conf` is gitignored
+  so it survives on its own). Update is **excluded from Fix-all** — it's a deliberate action, not
+  an unattended host-prep step.
 
 ### Technical Details
 
@@ -129,4 +137,7 @@ reimplementing it.
   `packages_gui.py` (relabel).
 - Repo-location chooser: `functions.py` (`default_repo_dir`, `saved_repo_path`,
   `save_repo_path`, `resolve_repo_dir`, discovery order), `host_checks.py`
-  (`clone_cmd(dest)`), `preflight_gui.py` (Browse row + clone-fix persistence).
+  (`clone_cmd(dest)`), `preflight_gui.py` (Browse row + clone-fix persistence + move).
+- Repo freshness/Update: `functions.py` (`repo_dir`, `git_fetch`, `commits_behind`,
+  `repo_is_dirty`, `git_pull_ff_argv`, `git_force_update_argv`), `host_checks.py`
+  (`check_repo_uptodate`), `preflight_gui.py` (Update fix + Fix-all exclusion).

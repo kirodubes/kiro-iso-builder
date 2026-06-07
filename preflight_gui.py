@@ -226,7 +226,9 @@ class PreflightScreen:
 
     # ── fixes ───────────────────────────────────────────────────────
     def _fix_all(self):
-        self._fix_queue = list(self.rows.keys())
+        # Update is a deliberate, potentially-destructive action — never run it
+        # unattended inside the Fix-all batch.
+        self._fix_queue = [k for k in self.rows if k != "uptodate"]
         self._next_in_queue()
 
     def _next_in_queue(self):
@@ -255,6 +257,8 @@ class PreflightScreen:
             fn.run_hostprep_fix(entry["fix"][1], self._log, done)
         elif kind == "unmount":
             fn.run_cleanup_mounts(self._log, done)
+        elif kind == "update":
+            self._update_repo(done)
         elif kind == "clone":
             cmd = hc.clone_cmd()
             if cmd is None:
@@ -269,6 +273,47 @@ class PreflightScreen:
     def _on_cloned(self, code, dest, done):
         if code == 0:
             fn.save_repo_path(dest)   # persist so discovery finds it next launch
+        fn.refresh_paths()
+        done(code)
+
+    # ── update the kiro-iso clone (git) ─────────────────────────────
+    def _update_repo(self, done):
+        repo = fn.repo_dir()
+        if repo is None:
+            done(1)
+            return
+        if not fn.repo_is_dirty(repo):
+            self._log("Updating kiro-iso (fast-forward)…")
+            fn.run_pipe(fn.git_pull_ff_argv(repo), self._log,
+                        lambda c: self._after_update(c, done))
+            return
+        # Dirty tree (build byproducts) — confirm a reset that keeps the user's data.
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message("Update kiro-iso to the latest?")
+        dlg.set_detail("The clone has local changes from building. They'll be discarded and "
+                       "the repo reset to the latest. Your package selection and build.conf "
+                       "are kept.")
+        dlg.set_buttons(["Cancel", "Discard & update"])
+        dlg.set_default_button(1)
+        dlg.set_cancel_button(0)
+        dlg.choose(self.window, None, lambda d, r: self._on_update_confirmed(d, r, repo, done))
+
+    def _on_update_confirmed(self, dlg, result, repo, done):
+        try:
+            idx = dlg.choose_finish(result)
+        except GLib.Error:
+            done(0)
+            return
+        if idx != 1:   # Cancel
+            done(0)
+            return
+        self._log("Updating kiro-iso (resetting to latest, preserving your package selection)…")
+        fn.run_pipe(fn.git_force_update_argv(repo, fn.package_selection_path()), self._log,
+                    lambda c: self._after_update(c, done))
+
+    def _after_update(self, code, done):
+        self._log("kiro-iso updated." if code == 0 else f"[update failed] exit {code}")
         fn.refresh_paths()
         done(code)
 

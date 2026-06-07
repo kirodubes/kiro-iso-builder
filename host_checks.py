@@ -49,6 +49,22 @@ def check_repo():
     return FAIL, "kiro-iso repo not found — everything is built from it", ("clone",)
 
 
+def check_repo_uptodate():
+    # Tell the user when their kiro-iso clone is behind origin so they don't
+    # build from stale scripts/package lists. Fetches; offline degrades to a WARN.
+    repo = fn.repo_dir()
+    if repo is None:
+        return OK, "set once the kiro-iso repo is present", None
+    if not fn.have("git"):
+        return WARN, "git unavailable — can't check for updates", None
+    if not fn.git_fetch(repo):
+        return WARN, "couldn't check for updates (offline?)", None
+    n = fn.commits_behind(repo)
+    if n == 0:
+        return OK, "up to date with origin", None
+    return WARN, f"{n} update(s) available — Update for the latest build scripts/packages", ("update",)
+
+
 def check_not_root():
     if os.geteuid() != 0:
         return OK, "Running as a normal user", None
@@ -146,6 +162,7 @@ def check_nvidia():
 # Order matters: repo + environment first, then fixable repos, then advisories.
 CHECKS = [
     ("repo", "kiro-iso repo", check_repo),
+    ("uptodate", "kiro-iso up to date", check_repo_uptodate),
     ("root", "Not running as root", check_not_root),
     ("arch", "Arch-based host", check_arch),
     ("polkit", "polkit auth agent", check_polkit),
