@@ -37,7 +37,7 @@ class BuildScreen:
         sub = Gtk.Label(
             label="Runs build-the-iso.sh as your user. You'll be asked for your password once; "
                   "if the build prompts (e.g. pacman's [Y/n]), type your reply in the box below.",
-            xalign=0, wrap=True)
+            xalign=0, wrap=True, max_width_chars=78)
         sub.add_css_class("dim-label")
         self.widget.append(sub)
 
@@ -81,7 +81,7 @@ class BuildScreen:
 
     def on_show(self):
         if fn.build_script() is None:
-            self._log("kiro-iso repo not found — fix it on the Pre-flight screen.")
+            self._log(f"{fn.REPO_NAME} repo not found — fix it on the Pre-flight screen.")
             self.start_btn.set_sensitive(False)
 
     def _start(self):

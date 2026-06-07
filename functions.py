@@ -67,7 +67,7 @@ def resolve_repo_dir(picked):
     picked = Path(picked)
     if (picked / "build-scripts" / "build-the-iso.sh").is_file():
         return picked
-    return picked / "kiro-iso"
+    return picked / REPO_NAME
 
 
 def find_build_scripts():
@@ -488,7 +488,7 @@ def run_hostprep_fix(args, on_line, on_done):
     """pkexec the host-prep dispatcher: one polkit prompt, runs as root."""
     runner = host_prep_run()
     if runner is None:
-        GLib.idle_add(on_line, "[error] kiro-iso repo not found")
+        GLib.idle_add(on_line, f"[error] {REPO_NAME} repo not found")
         GLib.idle_add(on_done, 1)
         return
     run_pipe(["pkexec", "bash", str(runner), *args], on_line, on_done)

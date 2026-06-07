@@ -38,7 +38,7 @@ class PreflightScreen:
         self.widget.append(subtitle)
 
         repo_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        repo_caption = Gtk.Label(label="kiro-iso location:", xalign=0)
+        repo_caption = Gtk.Label(label=f"{fn.REPO_NAME} location:", xalign=0)
         repo_caption.add_css_class("row-title")
         self.repo_label = Gtk.Label(xalign=0, hexpand=True, wrap=True, selectable=True)
         self.repo_label.add_css_class("dim-label")
@@ -121,7 +121,7 @@ class PreflightScreen:
 
     def _browse_repo(self):
         dialog = Gtk.FileDialog()
-        dialog.set_title("Choose where kiro-iso lives (or should be cloned)")
+        dialog.set_title(f"Choose where {fn.REPO_NAME} lives (or should be cloned)")
         start = fn.saved_repo_path() or fn.default_repo_dir()
         parent = start.parent if not start.is_dir() else start
         dialog.set_initial_folder(Gio.File.new_for_path(str(parent)))
@@ -137,10 +137,10 @@ class PreflightScreen:
         target = fn.resolve_repo_dir(gfile.get_path())
         # Already a clone at the chosen spot → just point the app there.
         if (target / "build-scripts" / "build-the-iso.sh").is_file():
-            self._set_repo_location(target, f"kiro-iso location set to {target}")
+            self._set_repo_location(target, f"{fn.REPO_NAME} location set to {target}")
             return
         if target.exists():
-            self._log(f"[error] {target} already exists but isn't a kiro-iso clone — "
+            self._log(f"[error] {target} already exists but isn't a {fn.REPO_NAME} clone — "
                       "pick another folder.")
             return
         current = fn.BUILD_SCRIPTS.parent if fn.BUILD_SCRIPTS else None
@@ -148,7 +148,7 @@ class PreflightScreen:
         if current and current != target and current.exists():
             self._confirm_move(current, target)
         else:
-            self._set_repo_location(target, f"kiro-iso location set to {target} (will clone here).")
+            self._set_repo_location(target, f"{fn.REPO_NAME} location set to {target} (will clone here).")
 
     def _set_repo_location(self, repo, msg):
         fn.save_repo_path(repo)
@@ -159,7 +159,7 @@ class PreflightScreen:
     def _confirm_move(self, current, target):
         dlg = Gtk.AlertDialog()
         dlg.set_modal(True)
-        dlg.set_message("Move the kiro-iso folder?")
+        dlg.set_message(f"Move the {fn.REPO_NAME} folder?")
         dlg.set_detail(f"From:  {current}\nTo:  {target}")
         dlg.set_buttons(["Cancel", "Move"])
         dlg.set_default_button(1)
@@ -191,7 +191,7 @@ class PreflightScreen:
         if err:
             self._log(f"[error] move failed: {err}")
             return
-        self._set_repo_location(target, f"Moved kiro-iso to {target}")
+        self._set_repo_location(target, f"Moved {fn.REPO_NAME} to {target}")
 
     def _build_row(self, r):
         row = Gtk.ListBoxRow()
@@ -264,7 +264,7 @@ class PreflightScreen:
         elif kind == "clone":
             cmd = hc.clone_cmd()
             if cmd is None:
-                self._log("[error] git not installed — cannot clone kiro-iso")
+                self._log(f"[error] git not installed — cannot clone {fn.REPO_NAME}")
                 done(1)
                 return
             dest = cmd[-1]
@@ -285,14 +285,14 @@ class PreflightScreen:
             done(1)
             return
         if not fn.repo_is_dirty(repo):
-            self._log("Updating kiro-iso (fast-forward)…")
+            self._log(f"Updating {fn.REPO_NAME} (fast-forward)…")
             fn.run_pipe(fn.git_pull_ff_argv(repo), self._log,
                         lambda c: self._after_update(c, done))
             return
         # Dirty tree (build byproducts) — confirm a reset that keeps the user's data.
         dlg = Gtk.AlertDialog()
         dlg.set_modal(True)
-        dlg.set_message("Update kiro-iso to the latest?")
+        dlg.set_message(f"Update {fn.REPO_NAME} to the latest?")
         dlg.set_detail("The clone has local changes from building. They'll be discarded and "
                        "the repo reset to the latest. Your package selection and build.conf "
                        "are kept.")
@@ -310,12 +310,12 @@ class PreflightScreen:
         if idx != 1:   # Cancel
             done(0)
             return
-        self._log("Updating kiro-iso (resetting to latest, preserving your package selection)…")
+        self._log(f"Updating {fn.REPO_NAME} (resetting to latest, preserving your package selection)…")
         fn.run_pipe(fn.git_force_update_argv(repo, fn.package_selection_path()), self._log,
                     lambda c: self._after_update(c, done))
 
     def _after_update(self, code, done):
-        self._log("kiro-iso updated." if code == 0 else f"[update failed] exit {code}")
+        self._log(f"{fn.REPO_NAME} updated." if code == 0 else f"[update failed] exit {code}")
         fn.refresh_paths()
         done(code)
 

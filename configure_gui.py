@@ -157,7 +157,7 @@ class ConfigureScreen:
         loc = LOCATION[self.location.get_selected()]
         base = fn.build_output_base(loc)
         if base is None:
-            self.location_hint.set_text("→ builds next to the kiro-iso repo (set the repo on Pre-flight)")
+            self.location_hint.set_text(f"→ builds next to the {fn.REPO_NAME} repo (set the repo on Pre-flight)")
             return
         where = "next to the repo" if loc == "local" else "your home folder"
         self.location_hint.set_text(f"→ kiro-build / kiro-Out go in {base} ({where})")
@@ -218,7 +218,7 @@ class ConfigureScreen:
     # ── import a shareable build profile (settings + package selection) ─
     def _import_profile(self):
         if not fn.build_conf_path():
-            self.status.set_text("kiro-iso repo not found — fix it on the Pre-flight screen.")
+            self.status.set_text(f"{fn.REPO_NAME} repo not found — fix it on the Pre-flight screen.")
             return
         dialog = Gtk.FileDialog()
         dialog.set_title("Import build profile")

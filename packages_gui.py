@@ -32,7 +32,7 @@ class PackagesScreen:
         sub = Gtk.Label(
             label="All optional (TIER 3) apps ship by default — tick any you want REMOVED from "
                   "the ISO. Core packages always ship and aren't listed here.",
-            xalign=0, wrap=True)
+            xalign=0, wrap=True, max_width_chars=70)
         sub.add_css_class("att-orange")
         self.widget.append(sub)
 
