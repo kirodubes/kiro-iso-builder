@@ -717,6 +717,28 @@ def strip_ansi(text):
 
 
 def open_path(path):
-    """Open a file/folder with the desktop default (Wayland-safe)."""
+    """Open a folder in the file manager (Wayland-safe).
+
+    Goes through the freedesktop ``org.freedesktop.FileManager1`` D-Bus interface
+    so it always lands in a real file manager — not whatever ``inode/directory`` is
+    bound to (some systems map it to a disk-usage analyzer, which is wrong here).
+    Falls back to a known file-manager binary, then ``xdg-open``.
+    """
+    p = Path(path)
+    uri = p.resolve().as_uri()
+    if have("gdbus"):
+        rc = subprocess.run(
+            ["gdbus", "call", "--session",
+             "--dest", "org.freedesktop.FileManager1",
+             "--object-path", "/org/freedesktop/FileManager1",
+             "--method", "org.freedesktop.FileManager1.ShowFolders",
+             f"['{uri}']", ""],
+            capture_output=True).returncode
+        if rc == 0:
+            return
+    for fm in ("thunar", "nemo", "nautilus", "dolphin", "pcmanfm-qt", "pcmanfm", "caja"):
+        if have(fm):
+            subprocess.Popen([fm, str(p)])
+            return
     if have("xdg-open"):
-        subprocess.Popen(["xdg-open", str(path)])
+        subprocess.Popen(["xdg-open", str(p)])

@@ -135,6 +135,13 @@ reimplementing it.
   **enable virtualization in the motherboard/BIOS-UEFI** (Intel VT-x / AMD-V / SVM), without which
   VirtualBox can't run VMs.
 
+- **"Open folder" opens a real file manager** — the Done screen's *Open output folder* / *Open
+  build log* (and any `open_path`) went through `xdg-open`, which obeys the `inode/directory` MIME
+  default; on a host where that's bound to a disk-usage analyzer (e.g. baobab) it opened the wrong
+  app. `open_path` now uses the freedesktop `org.freedesktop.FileManager1` D-Bus interface
+  (`ShowFolders`) so it always lands in a file manager (Thunar/Nemo/Nautilus/…), falling back to a
+  known FM binary, then `xdg-open`.
+
 ### Technical Details
 
 - **Privilege model:** app runs as the normal user (never root). Fixes elevate via
