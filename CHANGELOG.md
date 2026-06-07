@@ -31,7 +31,8 @@ reimplementing it.
   checkboxes, and a search filter. Unticked packages are written to `package-selection.conf`,
   which the build comments out — TIER 1/2 are never shown, so nothing here can break the build.
   **Save profile / Import profile** (also from streamline) export the current exclusion set to a
-  file and load it back, so the same package set can be reused for a later rebuild.
+  file and load it back, so the same package set can be reused for a later rebuild. Profiles live
+  in `~/.config/kiro-iso-builder/profiles/`, created at startup (ATT-style `ensure_app_dirs()`).
 - **Persistent Quit button** in the window's bottom-right footer, on every screen.
 - **Reset to defaults** button on the Configure screen — restores every knob to its shipped
   default (review, then Save to persist; shares one code path with the normal load).
@@ -41,8 +42,18 @@ reimplementing it.
   prompts once (answered via a GTK password dialog), then streams a live log and maps
   `Phase N` lines to a progress bar. Stoppable. An **input box** lets the user answer any
   prompt the build raises (e.g. mkarchiso/pacman's `[Y/n]`) by writing to the PTY master, and
-  log output is **ANSI-stripped** so terminal colour codes don't clutter the view.
-- **Done screen** — open `~/kiro-Out`, show checksums, boot the ISO in QEMU.
+  log output is **ANSI-stripped** so terminal colour codes don't clutter the view. The PTY is
+  given a real window size (`TIOCSWINSZ`) and in-place progress bars (carriage-return redraws)
+  collapse to their final state, so a big package no longer floods the log with hundreds of
+  identical lines.
+- **Done screen** — open `~/kiro-Out`, show checksums, and test-boot the ISO in **QEMU or
+  VirtualBox**. Both create a throwaway **UEFI** VM (OVMF / `--firmware efi`, not legacy BIOS)
+  with a **50 GB disk** so the Calamares installer has a target, and both **overwrite** a single
+  reusable test VM/disk (`kiro-iso-builder-test`) — fresh every run, no clutter. When a
+  hypervisor is missing the button becomes **Install QEMU** / **Install VirtualBox** (pkexec) and
+  flips back to Test once installed; the VirtualBox install (adapted from Erik's script) pulls
+  `virtualbox` + `virtualbox-host-dkms`, the `-headers` for every installed kernel, loads and
+  persists the modules, and adds the user to `vboxusers`.
 
 ### Technical Details
 

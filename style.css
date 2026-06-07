@@ -15,6 +15,19 @@
     font-size: 12px;
 }
 
+/* ATT brand orange — for emphasis / warnings */
+.att-orange {
+    color: #FFA500;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+/* ATT orange but at the surrounding text size (no enlarging) */
+.att-orange-note {
+    color: #FFA500;
+    font-size: 12px;
+}
+
 .card {
     background-color: alpha(currentColor, 0.04);
     border: 1px solid alpha(currentColor, 0.10);

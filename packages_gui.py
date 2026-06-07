@@ -30,10 +30,10 @@ class PackagesScreen:
         title.add_css_class("screen-title")
         self.widget.append(title)
         sub = Gtk.Label(
-            label="Tick the optional apps to ship on the ISO. Only TIER 3 (user-changeable) "
-                  "packages are listed — core packages can't be removed here.",
+            label="All optional (TIER 3) apps ship by default — tick any you want REMOVED from "
+                  "the ISO. Core packages always ship and aren't listed here.",
             xalign=0, wrap=True)
-        sub.add_css_class("dim-label")
+        sub.add_css_class("att-orange")
         self.widget.append(sub)
 
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -54,7 +54,7 @@ class PackagesScreen:
         self.widget.append(scroller)
 
         self.status = Gtk.Label(xalign=0)
-        self.status.add_css_class("dim-label")
+        self.status.add_css_class("att-orange-note")
         self.widget.append(self.status)
 
         profile = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -111,7 +111,7 @@ class PackagesScreen:
             for pkg in pkgs:
                 row = Gtk.CheckButton(label=pkg)
                 row.set_margin_start(24)
-                row.set_active(pkg not in excluded)
+                row.set_active(pkg in excluded)
                 row.connect("toggled", self._on_child_toggled, cat_check, child_checks)
                 self.container.append(row)
                 self.checks.append((pkg, row))
@@ -184,11 +184,11 @@ class PackagesScreen:
     def _update_status(self, total=None):
         if total is None:
             total = len(self.checks)
-        selected = sum(1 for _p, row in self.checks if row.get_active())
-        self.status.set_text(f"{selected} of {total} optional packages selected.")
+        removed = sum(1 for _p, row in self.checks if row.get_active())
+        self.status.set_text(f"Packages that will be removed from the iso: {removed}/{total}")
 
     def _save(self):
-        excludes = {pkg for pkg, row in self.checks if not row.get_active()}
+        excludes = {pkg for pkg, row in self.checks if row.get_active()}
         fn.write_excludes(excludes)
         self.window.navigate("build")
 
@@ -196,7 +196,7 @@ class PackagesScreen:
     def _apply_excludes(self, excludes):
         self._syncing = True
         for pkg, row in self.checks:
-            row.set_active(pkg not in excludes)
+            row.set_active(pkg in excludes)
         self._syncing = False
         for cat_check, child_checks in self.groups:
             self._sync_header(cat_check, child_checks)
@@ -215,7 +215,7 @@ class PackagesScreen:
         except GLib.Error:
             return
         if gfile:
-            excludes = {pkg for pkg, row in self.checks if not row.get_active()}
+            excludes = {pkg for pkg, row in self.checks if row.get_active()}
             fn.write_exclude_file(gfile.get_path(), excludes)
             self.status.set_text(f"Saved profile ({len(excludes)} excluded) → {gfile.get_path()}")
 
