@@ -28,7 +28,7 @@ DEFAULTS = {
 
 def _labelled(label, widget):
     box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-    lbl = Gtk.Label(label=label, xalign=0, hexpand=True)
+    lbl = Gtk.Label(label=label, xalign=0, hexpand=True, wrap=True)
     lbl.add_css_class("row-title")
     box.append(lbl)
     widget.set_halign(Gtk.Align.END)
