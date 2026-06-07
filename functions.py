@@ -16,6 +16,7 @@ import struct
 import subprocess
 import termios
 import threading
+import time
 from pathlib import Path
 
 import gi
@@ -147,6 +148,44 @@ def build_output_base(location):
         repo = repo_dir()
         return repo.parent if repo else None
     return Path.home()
+
+
+def build_folder():
+    """The mkarchiso work dir for the current build_location, or None."""
+    base = build_output_base(read_conf().get("build_location", "home"))
+    return base / "kiro-build" if base else None
+
+
+def out_folder():
+    """The ISO output dir for the current build_location, or None."""
+    base = build_output_base(read_conf().get("build_location", "home"))
+    return base / "kiro-Out" if base else None
+
+
+# ── Per-build logs ──────────────────────────────────────────────────
+def logs_dir():
+    """~/.config/kiro-iso-builder/logs — one timestamped folder per build."""
+    d = CONFIG_DIR / "logs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def new_build_log_dir():
+    """Create and return a fresh timestamped log folder for a build."""
+    d = logs_dir() / time.strftime("%Y-%m-%d_%H%M%S")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def latest_log_dir():
+    """The most recent per-build log folder, or None."""
+    subdirs = [p for p in logs_dir().iterdir() if p.is_dir()]
+    return max(subdirs, key=lambda p: p.stat().st_mtime) if subdirs else None
+
+
+def write_build_summary(log_dir, lines):
+    """Write summary.txt from a list of 'Key: value' strings."""
+    (Path(log_dir) / "summary.txt").write_text("\n".join(lines) + "\n")
 
 
 def git_fetch(repo, timeout=20):
