@@ -106,10 +106,14 @@ def check_disk():
 
 
 def check_kernels():
-    conf = fn.read_conf()
-    tokens = [t for t in conf.get("kernel", "").split() if t and t != "ask"]
+    if fn.build_conf_path() is None:
+        return OK, "set once the kiro-iso repo is present", None
+    raw = fn.read_conf().get("kernel", "").strip()
+    if raw == "ask":
+        return OK, "kernel picker set to 'ask' (chosen at build time)", None
+    tokens = [t for t in raw.split() if t and t != "ask"]
     if not tokens:
-        return OK, "kernel picker set to 'ask'", None
+        return WARN, "no kernel set in build.conf", None
     if not fn.have("pacman"):
         return WARN, "pacman unavailable", None
     available = set(fn.cmd_out(["pacman", "-Slq"]).split())

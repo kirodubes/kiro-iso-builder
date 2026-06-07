@@ -46,6 +46,11 @@ reimplementing it.
   given a real window size (`TIOCSWINSZ`) and in-place progress bars (carriage-return redraws)
   collapse to their final state, so a big package no longer floods the log with hundreds of
   identical lines.
+- **Build robustness fixes** — the PTY runner now exports `TERM=xterm-256color` so the build's
+  `tput` calls don't abort with "No value for $TERM" when the app is launched from a desktop
+  menu (where `TERM` is unset). The kernel pre-flight check now distinguishes "kiro-iso repo not
+  yet present", `kernel=ask` (chosen at build time), and "no kernel set in build.conf" (a real
+  WARN) instead of collapsing them all to a single misleading message.
 - **Done screen** — open `~/kiro-Out`, show checksums, and test-boot the ISO in **QEMU or
   VirtualBox**. Both create a throwaway **UEFI** VM (OVMF / `--firmware efi`, not legacy BIOS)
   with a **50 GB disk** so the Calamares installer has a target. Boot order is **disk-first, CD
