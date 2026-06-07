@@ -206,4 +206,4 @@ def clone_cmd(dest=None):
     if not shutil.which("git"):
         return None
     dest = dest or str(fn.saved_repo_path() or fn.default_repo_dir())
-    return ["git", "clone", "https://github.com/kirodubes/kiro-iso", dest]
+    return ["git", "clone", fn.REPO_URL, dest]
