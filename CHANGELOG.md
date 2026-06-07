@@ -12,13 +12,19 @@ reimplementing it.
 
 ### Window can be shrunk again
 
-- **Fixed: the window couldn't be dragged narrower.** A GTK4 `Gtk.Label` without
-  `wrap=True` requests its full single-line text as its *minimum* width, so the longest
-  unwrapped sentence on any Stack screen became the whole window's hard minimum width
-  (`set_default_size` only sets the *initial* size, not the floor). Added `wrap=True`
-  (with `max_width_chars=70` on the static subtitles) to every long label that lacked it:
-  the Pre-flight subtitle, the Configure subtitle / `_labelled` field labels / kernel &
-  status labels, and the Packages status label.
+- **Fixed: the window couldn't be dragged narrower — the real blocker was the Done
+  screen's button bar.** Eight buttons in a single non-wrapping `Gtk.Box` summed to a
+  ~1086px minimum width; because the `Gtk.Stack` sizes to its widest page, that pinned
+  the whole window (`set_default_size` only sets the *initial* size, never the floor).
+  Replaced the `Gtk.Box` with a `Gtk.FlowBox` (`min_children_per_line=1`) so the buttons
+  reflow onto multiple rows as the window narrows. Measured via a throwaway
+  `widget.measure()` harness: the Done floor dropped **1086 → 189px**; the window minimum
+  is now governed by the Configure form (~575px) at roughly **~760px** total.
+- **Long labels now wrap.** A GTK4 `Gtk.Label` without `wrap=True` requests its full
+  single-line text as its *minimum* width. Added `wrap=True` (with `max_width_chars=70`
+  on the static subtitles) to the long labels that lacked it — Pre-flight subtitle,
+  Configure subtitle / `_labelled` field labels / kernel & status labels, Packages status —
+  so each screen's own floor drops and the text reflows instead of forcing a single line.
 - **Packages subtitle split into two lines** at the `ISO.` boundary for readability
   (one wrapping label became two stacked labels in a vertical box).
 - Trimmed the initial window width 720 → 640.
