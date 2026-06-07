@@ -112,6 +112,13 @@ reimplementing it.
   `kiro-build`/`kiro-Out` will actually land (`local → <repo-parent> (next to the repo)`,
   `home → <home> (your home folder)`), so it's clear the build folders sit *beside* the repo, not
   inside it.
+- **Per-build log folder** — every build now writes `~/.config/kiro-iso-builder/logs/<timestamp>/`
+  capturing everything needed to diagnose it afterwards: `build.log` (full output), `build.conf`
+  (the settings used — nvidia_driver, kernel, …), `package-selection.conf` (exclusions), the
+  **final post-sed `packages.x86_64`** from the build tree (shows exactly which NVIDIA variant
+  shipped), and `summary.txt` (timestamp, duration, exit code, ISO name + size + checksums, host +
+  archiso version, SUCCESS/FAILED). A Done-screen **"Open build log"** button opens the latest one.
+  Prompted by a 390xx install failure where it wasn't clear what the ISO was actually built with.
 
 ### Technical Details
 

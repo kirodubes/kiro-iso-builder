@@ -2,7 +2,9 @@
 
 import os
 import re
+import shutil
 import signal
+import time
 
 import gi
 
@@ -20,6 +22,9 @@ class BuildScreen:
         self.proc = None
         self.send = None
         self._stopping = False
+        self._log_dir = None
+        self._log_fh = None
+        self._t0 = None
         self.total_phases = fn.max_build_phase()
 
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -84,6 +89,7 @@ class BuildScreen:
         if script is None:
             return
         self._stopping = False
+        self._open_build_log()
         self.start_btn.set_sensitive(False)
         self.stop_btn.set_sensitive(True)
         self._set_input_enabled(True)
@@ -124,6 +130,11 @@ class BuildScreen:
 
     def _on_line(self, line):
         line = fn.strip_ansi(line)
+        if self._log_fh:
+            try:
+                self._log_fh.write(line + "\n")
+            except OSError:
+                pass
         m = _PHASE_RE.search(line)
         if m:
             n = int(m.group(1))
@@ -137,6 +148,7 @@ class BuildScreen:
         self.send = None
         self.stop_btn.set_sensitive(False)
         self._set_input_enabled(False)
+        self._finalize_build_log(code)
         if code == 0:
             self.progress.set_fraction(1.0)
             self.progress.set_text("done")
@@ -163,6 +175,80 @@ class BuildScreen:
         self._log(f"── Mount cleanup {'done' if code == 0 else f'exit {code}'} ──")
         self.progress.set_text("cleaned up" if code == 0 else f"cleanup exit {code}")
         self.start_btn.set_sensitive(True)
+
+    # ── per-build log folder ────────────────────────────────────────
+    def _open_build_log(self):
+        self._t0 = time.time()
+        try:
+            self._log_dir = fn.new_build_log_dir()
+            self._log_fh = open(self._log_dir / "build.log", "w")
+        except OSError as exc:
+            self._log_dir = None
+            self._log_fh = None
+            self._log(f"[warn] couldn't open build log: {exc}")
+
+    def _finalize_build_log(self, code):
+        if self._log_fh:
+            try:
+                self._log_fh.close()
+            except OSError:
+                pass
+        self._log_fh = None
+        log_dir = self._log_dir
+        if not log_dir:
+            return
+        conf = fn.read_conf()
+        # Snapshot the inputs: the settings used + the final, post-sed package list.
+        bf = fn.build_folder()
+        sources = [fn.build_conf_path(), fn.package_selection_path(),
+                   (bf / "archiso" / "packages.x86_64") if bf else None]
+        for src in sources:
+            try:
+                if src and src.is_file():
+                    shutil.copy(src, log_dir / src.name)
+            except OSError:
+                pass
+        self._write_summary(log_dir, conf, code)
+        self._log(f"Build log saved to {log_dir}")
+
+    def _write_summary(self, log_dir, conf, code):
+        dur = int(time.time() - self._t0) if self._t0 else 0
+        iso = self._latest_iso()
+        lines = [
+            f"Timestamp:      {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Result:         {'SUCCESS' if code == 0 else f'FAILED (exit {code})'}",
+            f"Duration:       {dur // 60}m {dur % 60}s",
+            f"build_location: {conf.get('build_location', '?')}",
+            f"nvidia_driver:  {conf.get('nvidia_driver', '?')}",
+            f"kernel:         {conf.get('kernel', '?')}",
+            f"Host:           {self._host_pretty_name()}",
+            f"archiso:        {fn.cmd_out(['pacman', '-Q', 'archiso']) or '?'}",
+            f"ISO:            {iso.name if iso else '(none produced)'}",
+            f"ISO size:       {f'{iso.stat().st_size / 1_000_000_000:.2f} GB' if iso else '-'}",
+        ]
+        if iso:
+            for ext in ("sha256", "sha1", "md5"):
+                f = iso.with_name(iso.name + "." + ext)
+                if f.is_file():
+                    lines.append(f"{ext}:         {f.read_text().split()[0]}")
+        fn.write_build_summary(log_dir, lines)
+
+    def _latest_iso(self):
+        of = fn.out_folder()
+        if not of or not of.is_dir():
+            return None
+        isos = sorted(of.glob("*.iso"), key=lambda p: p.stat().st_mtime, reverse=True)
+        return isos[0] if isos else None
+
+    @staticmethod
+    def _host_pretty_name():
+        try:
+            for line in open("/etc/os-release", encoding="utf-8"):
+                if line.startswith("PRETTY_NAME="):
+                    return line.split("=", 1)[1].strip().strip('"')
+        except OSError:
+            pass
+        return "?"
 
     def _log(self, line):
         end = self.log_buf.get_end_iter()

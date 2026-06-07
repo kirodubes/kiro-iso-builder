@@ -47,12 +47,8 @@ _VBOX_INSTALL = (
 
 
 def _out_folder():
-    """Mirror build-the-iso.sh: home -> ~/kiro-Out, local -> beside the clone."""
-    if fn.BUILD_SCRIPTS is None:
-        return None
-    if fn.read_conf().get("build_location") == "local":
-        return fn.BUILD_SCRIPTS.parent.parent / "kiro-Out"
-    return Path.home() / "kiro-Out"
+    """The ISO output dir (mirrors build-the-iso.sh; shared with functions.py)."""
+    return fn.out_folder()
 
 
 def _latest_iso(folder):
@@ -93,6 +89,8 @@ class DoneScreen:
         self.vm_btn.connect("clicked", lambda _w: self._test_vm())
         self.install_btn = Gtk.Button(label="Install QEMU")
         self.install_btn.connect("clicked", lambda _w: self._install_qemu())
+        self.log_btn = Gtk.Button(label="Open build log")
+        self.log_btn.connect("clicked", lambda _w: self._open_log())
         self.save_profile_btn = Gtk.Button(label="Save build profile…")
         self.save_profile_btn.connect("clicked", lambda _w: self._save_profile())
         again = Gtk.Button(label="Build again")
@@ -102,6 +100,7 @@ class DoneScreen:
         bar.append(self.vbox_install_btn)
         bar.append(self.vm_btn)
         bar.append(self.install_btn)
+        bar.append(self.log_btn)
         bar.append(self.save_profile_btn)
         bar.append(again)
         self.widget.append(bar)
@@ -129,6 +128,7 @@ class DoneScreen:
     def _enable(self, on):
         self.open_btn.set_sensitive(on)
         self.save_profile_btn.set_sensitive(on)
+        self.log_btn.set_sensitive(fn.latest_log_dir() is not None)
         has_vbox = fn.have("VBoxManage")
         self.vbox_btn.set_visible(has_vbox)
         self.vbox_btn.set_sensitive(on and has_vbox)
@@ -145,6 +145,11 @@ class DoneScreen:
         folder = _out_folder()
         if folder:
             fn.open_path(folder)
+
+    def _open_log(self):
+        log_dir = fn.latest_log_dir()
+        if log_dir:
+            fn.open_path(log_dir)
 
     def _test_virtualbox(self):
         if not self.iso or not fn.have("VBoxManage"):
