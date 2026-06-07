@@ -1,5 +1,6 @@
 """Pre-flight screen — runs host checks and offers one-click fixes."""
 
+import shutil
 import threading
 
 import gi
@@ -133,11 +134,64 @@ class PreflightScreen:
             return
         if not gfile:
             return
-        repo = fn.resolve_repo_dir(gfile.get_path())
+        target = fn.resolve_repo_dir(gfile.get_path())
+        # Already a clone at the chosen spot → just point the app there.
+        if (target / "build-scripts" / "build-the-iso.sh").is_file():
+            self._set_repo_location(target, f"kiro-iso location set to {target}")
+            return
+        if target.exists():
+            self._log(f"[error] {target} already exists but isn't a kiro-iso clone — "
+                      "pick another folder.")
+            return
+        current = fn.BUILD_SCRIPTS.parent if fn.BUILD_SCRIPTS else None
+        # A clone exists elsewhere → offer to move it to the chosen spot.
+        if current and current != target and current.exists():
+            self._confirm_move(current, target)
+        else:
+            self._set_repo_location(target, f"kiro-iso location set to {target} (will clone here).")
+
+    def _set_repo_location(self, repo, msg):
         fn.save_repo_path(repo)
         fn.refresh_paths()
-        self._log(f"kiro-iso location set to {repo}")
+        self._log(msg)
         self.refresh()
+
+    def _confirm_move(self, current, target):
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message("Move the kiro-iso folder?")
+        dlg.set_detail(f"From:  {current}\nTo:  {target}")
+        dlg.set_buttons(["Cancel", "Move"])
+        dlg.set_default_button(1)
+        dlg.set_cancel_button(0)
+        dlg.choose(self.window, None,
+                   lambda d, r: self._on_move_confirmed(d, r, current, target))
+
+    def _on_move_confirmed(self, dlg, result, current, target):
+        try:
+            idx = dlg.choose_finish(result)
+        except GLib.Error:
+            return
+        if idx != 1:   # Cancel
+            return
+        self._log(f"Moving {current} → {target} …")
+
+        def worker():
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(current), str(target))
+                err = None
+            except (OSError, shutil.Error) as exc:
+                err = str(exc)
+            GLib.idle_add(self._on_moved, target, err)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_moved(self, target, err):
+        if err:
+            self._log(f"[error] move failed: {err}")
+            return
+        self._set_repo_location(target, f"Moved kiro-iso to {target}")
 
     def _build_row(self, r):
         row = Gtk.ListBoxRow()

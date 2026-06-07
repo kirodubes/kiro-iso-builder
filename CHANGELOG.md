@@ -92,13 +92,14 @@ reimplementing it.
   byte-identical image (Kiro is rolling). The pre-existing package-only Save/Import
   buttons were relabelled **Save/Import package list…** to distinguish them.
 - **Choose where the kiro-iso repo lives** — the Pre-flight screen now shows a
-  **kiro-iso location** row with a **Browse…** button, so the user can point the app at
-  an existing clone anywhere or pick where a new one should be cloned (instead of the old
-  hardcoded `~/kiro-iso`). The choice is persisted to `~/.config/kiro-iso-builder/repo_path`
-  and tried first by repo discovery, so it survives a relaunch; the clone fix targets it
-  (and persists a freshly-cloned default too). Browsing to a folder that already holds the
-  repo uses it as-is; otherwise the repo is created as `<folder>/kiro-iso`. Distinct from
-  the `build_location` knob (which only moves `kiro-build`/`kiro-Out`).
+  **kiro-iso location** row with a **Browse…** button (instead of the old hardcoded
+  `~/kiro-iso`). Browsing to a folder that already holds a clone points the app there;
+  browsing to a new folder while a clone exists elsewhere offers to **move** it there
+  (confirmation dialog showing from → to, run off the UI thread); browsing to a new folder
+  with no clone anywhere remembers the spot so the clone fix populates it. The choice is
+  persisted to `~/.config/kiro-iso-builder/repo_path` and tried first by repo discovery, so
+  it survives a relaunch. Distinct from the `build_location` knob (which only moves
+  `kiro-build`/`kiro-Out`).
 
 ### Technical Details
 
