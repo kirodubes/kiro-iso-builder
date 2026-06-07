@@ -19,6 +19,7 @@ class BuildScreen:
         self.window = window
         self.proc = None
         self.send = None
+        self._stopping = False
         self.total_phases = fn.max_build_phase()
 
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -82,6 +83,7 @@ class BuildScreen:
         script = fn.build_script()
         if script is None:
             return
+        self._stopping = False
         self.start_btn.set_sensitive(False)
         self.stop_btn.set_sensitive(True)
         self._set_input_enabled(True)
@@ -113,6 +115,7 @@ class BuildScreen:
 
     def _stop(self):
         if self.proc and self.proc.poll() is None:
+            self._stopping = True
             try:
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
             except (ProcessLookupError, PermissionError):
@@ -133,16 +136,33 @@ class BuildScreen:
         self.proc = None
         self.send = None
         self.stop_btn.set_sensitive(False)
-        self.start_btn.set_sensitive(True)
         self._set_input_enabled(False)
         if code == 0:
             self.progress.set_fraction(1.0)
             self.progress.set_text("done")
             self._log("── Build finished ──")
+            self.start_btn.set_sensitive(True)
             self.window.navigate("done")
+            return
+        # Abnormal exit (user Stop or a build failure): mkarchiso may have left
+        # bind-mounts live under the work dir — the thing that wedges the host.
+        # Unmount them before re-arming Start. The user-side check first means a
+        # clean failure raises no polkit prompt.
+        verb = "stopped" if self._stopping else "failed"
+        self._stopping = False
+        self.progress.set_text(f"{verb} (exit {code})")
+        self._log(f"── Build {verb} (exit {code}) ──")
+        if fn.stale_mounts_present():
+            self.progress.set_text("cleaning up mounts…")
+            self._log("── Stale build mounts found — cleaning up ──")
+            fn.run_cleanup_mounts(self._log, self._on_cleanup_done)
         else:
-            self.progress.set_text(f"failed (exit {code})")
-            self._log(f"── Build failed (exit {code}) ──")
+            self.start_btn.set_sensitive(True)
+
+    def _on_cleanup_done(self, code):
+        self._log(f"── Mount cleanup {'done' if code == 0 else f'exit {code}'} ──")
+        self.progress.set_text("cleaned up" if code == 0 else f"cleanup exit {code}")
+        self.start_btn.set_sensitive(True)
 
     def _log(self, line):
         end = self.log_buf.get_end_iter()

@@ -155,6 +155,8 @@ class PreflightScreen:
 
         if kind == "hostprep":
             fn.run_hostprep_fix(entry["fix"][1], self._log, done)
+        elif kind == "unmount":
+            fn.run_cleanup_mounts(self._log, done)
         elif kind == "clone":
             cmd = hc.clone_cmd()
             if cmd is None:

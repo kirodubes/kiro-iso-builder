@@ -62,6 +62,19 @@ reimplementing it.
   flips back to Test once installed; the VirtualBox install (adapted from Erik's script) pulls
   `virtualbox` + `virtualbox-host-dkms`, the `-headers` for every installed kernel, loads and
   persists the modules, and adds the user to `vboxusers`.
+- **Stale-mount fail-safe** — stopping a build halfway used to leave mkarchiso's bind-mounts
+  (`dev/proc/sys/run/tmp/pts/shm/efivars`) live under the work dir, which blocks the next build,
+  jams the file manager, and can freeze the host (it did — hard reboot). Now: (1) the **Build
+  screen** runs a cleanup after any abnormal exit (Stop **or** failure) — it first checks for
+  leftover mounts as the user (no prompt) and only `pkexec`-unmounts if some remain, re-arming
+  **Start** only once clean; (2) a new **Pre-flight check** ("Stale build mounts") surfaces
+  leftovers from an earlier crash with a one-click Fix; (3) `build-the-iso.sh` now unmounts on
+  any early exit via an `EXIT` trap (the net — also covers a `set -e` build failure), with
+  `INT`/`TERM` traps on top so a `Ctrl-C`/`kill` (CLI or the GUI's Stop) cleans up immediately.
+  Backed by
+  a new self-contained `kiro-iso/build-scripts/unmount-build.sh` (`check` = read-only detect,
+  `clean` = unmount) that derives the work dir the same way the build does — one source of truth
+  shared by the Stop handler, the pre-flight check, and the CLI.
 
 ### Technical Details
 
@@ -79,3 +92,7 @@ reimplementing it.
 - `kiro-iso-builder.py` (entry/Application/Window), `functions.py` (runners + config bridge),
   `host_checks.py`, `preflight_gui.py`, `configure_gui.py`, `build_gui.py`, `done_gui.py`,
   `style.css`, `kiro-iso-builder.desktop`, `README.md`.
+- Stale-mount fail-safe: `functions.py` (`unmount_build_script`, `stale_mounts_present`,
+  `run_cleanup_mounts`), `build_gui.py` (cleanup-on-abnormal-exit), `host_checks.py`
+  (`check_stale_mounts`), `preflight_gui.py` (`unmount` fix). Pairs with new
+  `kiro-iso/build-scripts/unmount-build.sh` + `INT`/`TERM` trap in `build-the-iso.sh`.

@@ -123,6 +123,16 @@ def check_kernels():
     return OK, f"kernel(s) resolve: {', '.join(tokens)}", None
 
 
+def check_stale_mounts():
+    # Leftover mkarchiso bind-mounts from an earlier stopped/crashed build break
+    # the next build and can wedge the host. Detect them read-only (no root).
+    if fn.unmount_build_script() is None:
+        return OK, "set once the kiro-iso repo is present", None
+    if fn.stale_mounts_present():
+        return WARN, "stale build mounts under kiro-build — clean before building", ("unmount",)
+    return OK, "no stale build mounts", None
+
+
 def check_nvidia():
     conf = fn.read_conf()
     choice = conf.get("nvidia_driver", "open")
@@ -144,6 +154,7 @@ CHECKS = [
     ("chaotic", "Chaotic-AUR repo", check_chaotic),
     ("cachyos", "CachyOS repo", check_cachyos),
     ("disk", "Free disk space", check_disk),
+    ("stale_mounts", "Stale build mounts", check_stale_mounts),
     ("kernels", "Kernel package(s)", check_kernels),
     ("nvidia", "NVIDIA driver choice", check_nvidia),
 ]

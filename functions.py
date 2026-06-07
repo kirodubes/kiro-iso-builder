@@ -61,6 +61,10 @@ def host_prep_run():
     return BUILD_SCRIPTS / "host-prep-run.sh" if BUILD_SCRIPTS else None
 
 
+def unmount_build_script():
+    return BUILD_SCRIPTS / "unmount-build.sh" if BUILD_SCRIPTS else None
+
+
 def build_conf_path():
     return BUILD_SCRIPTS / "build.conf" if BUILD_SCRIPTS else None
 
@@ -274,6 +278,28 @@ def run_hostprep_fix(args, on_line, on_done):
         GLib.idle_add(on_done, 1)
         return
     run_pipe(["pkexec", "bash", str(runner), *args], on_line, on_done)
+
+
+def stale_mounts_present():
+    """True if mkarchiso bind-mounts are still live under the work dir.
+
+    Runs unmount-build.sh in read-only ``check`` mode as the user (no elevation),
+    so it can gate the privileged cleanup without ever popping a polkit prompt.
+    """
+    script = unmount_build_script()
+    if script is None or not script.is_file():
+        return False
+    return not cmd_ok(["bash", str(script), "check"])
+
+
+def run_cleanup_mounts(on_line, on_done):
+    """pkexec the build-mount cleanup: one polkit prompt, unmounts as root."""
+    script = unmount_build_script()
+    if script is None:
+        GLib.idle_add(on_line, "[error] unmount-build.sh not found")
+        GLib.idle_add(on_done, 1)
+        return
+    run_pipe(["pkexec", "bash", str(script), "clean"], on_line, on_done)
 
 
 # ── Runner 2: PTY (the build) — gives sudo a tty, smooth streaming ──
