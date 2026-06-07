@@ -1,0 +1,151 @@
+"""Build screen — runs build-the-iso.sh under a PTY with live log + progress."""
+
+import os
+import re
+import signal
+
+import gi
+
+import functions as fn
+
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk  # noqa: E402
+
+_PHASE_RE = re.compile(r"\bPhase\s+(\d+)\b")
+
+
+class BuildScreen:
+    def __init__(self, window):
+        self.window = window
+        self.proc = None
+        self.send = None
+        self.total_phases = fn.max_build_phase()
+
+        self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for m in ("set_margin_top", "set_margin_bottom", "set_margin_start", "set_margin_end"):
+            getattr(self.widget, m)(18)
+
+        title = Gtk.Label(label="Build the ISO", xalign=0)
+        title.add_css_class("screen-title")
+        self.widget.append(title)
+        sub = Gtk.Label(
+            label="Runs build-the-iso.sh as your user. You'll be asked for your password once; "
+                  "if the build prompts (e.g. pacman's [Y/n]), type your reply in the box below.",
+            xalign=0, wrap=True)
+        sub.add_css_class("dim-label")
+        self.widget.append(sub)
+
+        bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.start_btn = Gtk.Button(label="Start build")
+        self.start_btn.add_css_class("suggested-action")
+        self.start_btn.connect("clicked", lambda _w: self._start())
+        self.stop_btn = Gtk.Button(label="Stop")
+        self.stop_btn.add_css_class("destructive-action")
+        self.stop_btn.set_sensitive(False)
+        self.stop_btn.connect("clicked", lambda _w: self._stop())
+        bar.append(self.start_btn)
+        bar.append(self.stop_btn)
+        self.widget.append(bar)
+
+        self.progress = Gtk.ProgressBar(show_text=True, text="idle")
+        self.widget.append(self.progress)
+
+        self.log_view = Gtk.TextView(editable=False, monospace=True, cursor_visible=False)
+        self.log_buf = self.log_view.get_buffer()
+        scroller = Gtk.ScrolledWindow(vexpand=True)
+        scroller.set_child(self.log_view)
+        self.widget.append(scroller)
+
+        # Input row — answer prompts the build raises (e.g. pacman's [Y/n]).
+        input_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.input = Gtk.Entry(hexpand=True, sensitive=False,
+                               placeholder_text="Reply to a build prompt (e.g. y) and press Enter")
+        self.input.connect("activate", lambda _w: self._send_input())
+        self.send_btn = Gtk.Button(label="Send", sensitive=False)
+        self.send_btn.connect("clicked", lambda _w: self._send_input())
+        input_row.append(self.input)
+        input_row.append(self.send_btn)
+        self.widget.append(input_row)
+
+        nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8, halign=Gtk.Align.END)
+        back = Gtk.Button(label="← Back")
+        back.connect("clicked", lambda _w: self.window.navigate("packages"))
+        nav.append(back)
+        self.widget.append(nav)
+
+    def on_show(self):
+        if fn.build_script() is None:
+            self._log("kiro-iso repo not found — fix it on the Pre-flight screen.")
+            self.start_btn.set_sensitive(False)
+
+    def _start(self):
+        script = fn.build_script()
+        if script is None:
+            return
+        self.start_btn.set_sensitive(False)
+        self.stop_btn.set_sensitive(True)
+        self._set_input_enabled(True)
+        self.progress.set_fraction(0.0)
+        self.progress.set_text("starting…")
+        self._log("── Starting build ──")
+        fn.run_in_pty(
+            ["bash", str(script)], str(fn.BUILD_SCRIPTS),
+            self._on_line, self._on_done,
+            lambda prompt: fn.ask_password(self.window, prompt),
+            on_start=self._on_proc,
+        )
+
+    def _on_proc(self, proc, send):
+        self.proc = proc
+        self.send = send
+
+    def _set_input_enabled(self, on):
+        self.input.set_sensitive(on)
+        self.send_btn.set_sensitive(on)
+
+    def _send_input(self):
+        if not self.send:
+            return
+        text = self.input.get_text()
+        self.send(text + "\n")
+        self._log(f"> {text}")
+        self.input.set_text("")
+
+    def _stop(self):
+        if self.proc and self.proc.poll() is None:
+            try:
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                self.proc.terminate()
+            self._log("── Stop requested ──")
+
+    def _on_line(self, line):
+        line = fn.strip_ansi(line)
+        m = _PHASE_RE.search(line)
+        if m:
+            n = int(m.group(1))
+            total = max(self.total_phases, n)
+            self.progress.set_fraction(min(n / total, 1.0))
+            self.progress.set_text(f"Phase {n} / {total}")
+        self._log(line)
+
+    def _on_done(self, code):
+        self.proc = None
+        self.send = None
+        self.stop_btn.set_sensitive(False)
+        self.start_btn.set_sensitive(True)
+        self._set_input_enabled(False)
+        if code == 0:
+            self.progress.set_fraction(1.0)
+            self.progress.set_text("done")
+            self._log("── Build finished ──")
+            self.window.navigate("done")
+        else:
+            self.progress.set_text(f"failed (exit {code})")
+            self._log(f"── Build failed (exit {code}) ──")
+
+    def _log(self, line):
+        end = self.log_buf.get_end_iter()
+        self.log_buf.insert(end, line + "\n")
+        mark = self.log_buf.create_mark(None, self.log_buf.get_end_iter(), False)
+        self.log_view.scroll_mark_onscreen(mark)

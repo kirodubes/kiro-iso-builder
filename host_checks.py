@@ -1,0 +1,163 @@
+"""Pre-flight host checks for kiro-iso-builder.
+
+Each check detects a condition and, where possible, names a one-click fix that
+maps to an existing host-prep.sh function — so a host fixed in the GUI is
+identical to one prepared by the CLI build. Works on any Arch-based host.
+"""
+
+import os
+import shutil
+
+import functions as fn
+
+OK, WARN, FAIL = "ok", "warn", "fail"
+
+# Fix descriptors the pre-flight screen knows how to run:
+#   ("hostprep", [args])  -> pkexec bash host-prep-run.sh <args>
+#   ("clone",)            -> git clone the kiro-iso repo (no root)
+#   None                  -> not auto-fixable
+
+
+def _pkg(name):
+    return fn.cmd_ok(["pacman", "-Qi", name])
+
+
+def _os_release():
+    data = {}
+    try:
+        for line in open("/etc/os-release", encoding="utf-8"):
+            if "=" in line:
+                k, v = line.rstrip("\n").split("=", 1)
+                data[k] = v.strip().strip('"')
+    except OSError:
+        pass
+    return data
+
+
+def _free_gb(path):
+    try:
+        st = os.statvfs(path)
+        return st.f_bavail * st.f_frsize / 1_000_000_000
+    except OSError:
+        return 0.0
+
+
+# ── Individual checks → (status, detail, fix) ───────────────────────
+def check_repo():
+    if fn.BUILD_SCRIPTS:
+        return OK, f"Found at {fn.BUILD_SCRIPTS}", None
+    return FAIL, "kiro-iso repo not found — everything is built from it", ("clone",)
+
+
+def check_not_root():
+    if os.geteuid() != 0:
+        return OK, "Running as a normal user", None
+    return FAIL, "Do NOT run the builder as root — relaunch as your user", None
+
+
+def check_arch():
+    osr = _os_release()
+    idlike = f"{osr.get('ID', '')} {osr.get('ID_LIKE', '')}".lower()
+    if "arch" in idlike:
+        return OK, f"{osr.get('PRETTY_NAME', 'Arch-based')}", None
+    return FAIL, f"{osr.get('PRETTY_NAME', 'Unknown')} is not Arch-based", None
+
+
+def check_polkit():
+    # pkexec needs an authentication agent running in the session.
+    if not fn.have("pkexec"):
+        return FAIL, "pkexec not installed — fixes cannot elevate", None
+    agents = ("polkit-gnome-au", "polkit-kde-auth", "lxpolkit",
+              "polkit-mate-aut", "xfce-polkit", "polkitd")
+    running = fn.cmd_out(["pgrep", "-l", "-f", "polkit"])
+    if any(a in running for a in agents) or running:
+        return OK, "polkit agent present", None
+    return WARN, "No polkit agent detected — fix prompts may not appear", None
+
+
+def check_archiso():
+    return (OK, "archiso installed", None) if _pkg("archiso") else \
+        (FAIL, "archiso missing", ("hostprep", ["ensure_package", "archiso"]))
+
+
+def check_grub():
+    return (OK, "grub installed", None) if _pkg("grub") else \
+        (FAIL, "grub missing", ("hostprep", ["ensure_package", "grub"]))
+
+
+def check_chaotic():
+    have = _pkg("chaotic-keyring") and _pkg("chaotic-mirrorlist")
+    return (OK, "chaotic keyring + mirrorlist present", None) if have else \
+        (FAIL, "chaotic keyring/mirrorlist missing", ("hostprep", ["setup_chaotic"]))
+
+
+def check_cachyos():
+    have = _pkg("cachyos-keyring") and _pkg("cachyos-mirrorlist")
+    return (OK, "cachyos keyring + mirrorlist present", None) if have else \
+        (FAIL, "cachyos keyring/mirrorlist missing (linux-cachyos lives there)",
+         ("hostprep", ["setup_cachyos"]))
+
+
+def check_disk():
+    free = _free_gb(os.path.expanduser("~"))
+    if free >= 15:
+        return OK, f"{free:.0f} GB free in home", None
+    return WARN, f"only {free:.0f} GB free in home (~15 GB recommended)", None
+
+
+def check_kernels():
+    conf = fn.read_conf()
+    tokens = [t for t in conf.get("kernel", "").split() if t and t != "ask"]
+    if not tokens:
+        return OK, "kernel picker set to 'ask'", None
+    if not fn.have("pacman"):
+        return WARN, "pacman unavailable", None
+    available = set(fn.cmd_out(["pacman", "-Slq"]).split())
+    missing = [t for t in tokens if t not in available]
+    if missing:
+        return WARN, f"kernel(s) not in synced repos: {', '.join(missing)}", None
+    return OK, f"kernel(s) resolve: {', '.join(tokens)}", None
+
+
+def check_nvidia():
+    conf = fn.read_conf()
+    choice = conf.get("nvidia_driver", "open")
+    lspci = fn.cmd_out(["lspci"]) if fn.have("lspci") else ""
+    has_nv = "nvidia" in lspci.lower()
+    if has_nv:
+        return OK, f"NVIDIA GPU detected; driver set to '{choice}'", None
+    return OK, f"no NVIDIA GPU detected; driver set to '{choice}' (unused)", None
+
+
+# Order matters: repo + environment first, then fixable repos, then advisories.
+CHECKS = [
+    ("repo", "kiro-iso repo", check_repo),
+    ("root", "Not running as root", check_not_root),
+    ("arch", "Arch-based host", check_arch),
+    ("polkit", "polkit auth agent", check_polkit),
+    ("archiso", "archiso package", check_archiso),
+    ("grub", "grub package", check_grub),
+    ("chaotic", "Chaotic-AUR repo", check_chaotic),
+    ("cachyos", "CachyOS repo", check_cachyos),
+    ("disk", "Free disk space", check_disk),
+    ("kernels", "Kernel package(s)", check_kernels),
+    ("nvidia", "NVIDIA driver choice", check_nvidia),
+]
+
+
+def run_all():
+    """Return a list of dicts: key, title, status, detail, fix."""
+    results = []
+    for key, title, detect in CHECKS:
+        status, detail, fix = detect()
+        results.append({"key": key, "title": title, "status": status,
+                        "detail": detail, "fix": fix})
+    return results
+
+
+def clone_cmd():
+    """git clone argv for the repo fix (into ~/kiro-iso). None if git absent."""
+    if not shutil.which("git"):
+        return None
+    dest = os.path.join(os.path.expanduser("~"), "kiro-iso")
+    return ["git", "clone", "https://github.com/kirodubes/kiro-iso", dest]
