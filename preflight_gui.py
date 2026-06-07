@@ -8,7 +8,7 @@ import functions as fn
 import host_checks as hc
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 _ICON = {hc.OK: "emblem-ok-symbolic",
          hc.WARN: "dialog-warning-symbolic",
@@ -35,6 +35,19 @@ class PreflightScreen:
             xalign=0)
         subtitle.add_css_class("dim-label")
         self.widget.append(subtitle)
+
+        repo_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        repo_caption = Gtk.Label(label="kiro-iso location:", xalign=0)
+        repo_caption.add_css_class("row-title")
+        self.repo_label = Gtk.Label(xalign=0, hexpand=True, wrap=True, selectable=True)
+        self.repo_label.add_css_class("dim-label")
+        browse_btn = Gtk.Button(label="Browse…")
+        browse_btn.set_valign(Gtk.Align.CENTER)
+        browse_btn.connect("clicked", lambda _w: self._browse_repo())
+        repo_row.append(repo_caption)
+        repo_row.append(self.repo_label)
+        repo_row.append(browse_btn)
+        self.widget.append(repo_row)
 
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.recheck_btn = Gtk.Button(label="Re-check")
@@ -67,6 +80,8 @@ class PreflightScreen:
         self.continue_btn.connect("clicked", lambda _w: self.window.navigate("configure"))
         self.widget.append(self.continue_btn)
 
+        self._update_repo_label()
+
     def on_show(self):
         if not self.rows:
             self.refresh()
@@ -94,6 +109,35 @@ class PreflightScreen:
         n_fail = sum(1 for r in results if r["status"] == hc.FAIL)
         self.continue_btn.set_sensitive(n_fail == 0)
         self.fixall_btn.set_sensitive(any(r["fix"] for r in results))
+        self._update_repo_label()
+
+    def _update_repo_label(self):
+        if fn.BUILD_SCRIPTS:
+            self.repo_label.set_text(str(fn.BUILD_SCRIPTS.parent))
+        else:
+            target = fn.saved_repo_path() or fn.default_repo_dir()
+            self.repo_label.set_text(f"not found — will clone to {target}")
+
+    def _browse_repo(self):
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Choose where kiro-iso lives (or should be cloned)")
+        start = fn.saved_repo_path() or fn.default_repo_dir()
+        parent = start.parent if not start.is_dir() else start
+        dialog.set_initial_folder(Gio.File.new_for_path(str(parent)))
+        dialog.select_folder(self.window, None, self._on_repo_chosen)
+
+    def _on_repo_chosen(self, dialog, result):
+        try:
+            gfile = dialog.select_folder_finish(result)
+        except GLib.Error:
+            return
+        if not gfile:
+            return
+        repo = fn.resolve_repo_dir(gfile.get_path())
+        fn.save_repo_path(repo)
+        fn.refresh_paths()
+        self._log(f"kiro-iso location set to {repo}")
+        self.refresh()
 
     def _build_row(self, r):
         row = Gtk.ListBoxRow()
@@ -163,9 +207,16 @@ class PreflightScreen:
                 self._log("[error] git not installed — cannot clone kiro-iso")
                 done(1)
                 return
-            fn.run_pipe(cmd, self._log, lambda c: (fn.refresh_paths(), done(c))[1])
+            dest = cmd[-1]
+            fn.run_pipe(cmd, self._log, lambda c: self._on_cloned(c, dest, done))
         else:
             done(0)
+
+    def _on_cloned(self, code, dest, done):
+        if code == 0:
+            fn.save_repo_path(dest)   # persist so discovery finds it next launch
+        fn.refresh_paths()
+        done(code)
 
     # ── log ─────────────────────────────────────────────────────────
     def _log(self, line):

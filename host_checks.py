@@ -170,9 +170,12 @@ def run_all():
     return results
 
 
-def clone_cmd():
-    """git clone argv for the repo fix (into ~/kiro-iso). None if git absent."""
+def clone_cmd(dest=None):
+    """git clone argv for the repo fix. None if git absent.
+
+    Clones into the user-chosen repo path (or the default ~/kiro-iso).
+    """
     if not shutil.which("git"):
         return None
-    dest = os.path.join(os.path.expanduser("~"), "kiro-iso")
+    dest = dest or str(fn.saved_repo_path() or fn.default_repo_dir())
     return ["git", "clone", "https://github.com/kirodubes/kiro-iso", dest]

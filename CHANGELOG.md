@@ -91,6 +91,14 @@ reimplementing it.
   about the builder's machine, not the ISO. The file records the recipe, not a
   byte-identical image (Kiro is rolling). The pre-existing package-only Save/Import
   buttons were relabelled **Save/Import package list…** to distinguish them.
+- **Choose where the kiro-iso repo lives** — the Pre-flight screen now shows a
+  **kiro-iso location** row with a **Browse…** button, so the user can point the app at
+  an existing clone anywhere or pick where a new one should be cloned (instead of the old
+  hardcoded `~/kiro-iso`). The choice is persisted to `~/.config/kiro-iso-builder/repo_path`
+  and tried first by repo discovery, so it survives a relaunch; the clone fix targets it
+  (and persists a freshly-cloned default too). Browsing to a folder that already holds the
+  repo uses it as-is; otherwise the repo is created as `<folder>/kiro-iso`. Distinct from
+  the `build_location` knob (which only moves `kiro-build`/`kiro-Out`).
 
 ### Technical Details
 
@@ -115,3 +123,9 @@ reimplementing it.
 - build.conf seeding: `functions.py` (`build_conf_defaults_path`, `ensure_build_conf`,
   seed in `refresh_paths`), `kiro-iso-builder.py` (seed at startup). Pairs with
   `kiro-iso`'s gitignored `build.conf` + tracked `build.conf.defaults`.
+- Build profiles: `functions.py` (`write_build_profile`/`read_build_profile`,
+  `PROFILE_SETTINGS_KEYS`), `done_gui.py` (Save), `configure_gui.py` (Import),
+  `packages_gui.py` (relabel).
+- Repo-location chooser: `functions.py` (`default_repo_dir`, `saved_repo_path`,
+  `save_repo_path`, `resolve_repo_dir`, discovery order), `host_checks.py`
+  (`clone_cmd(dest)`), `preflight_gui.py` (Browse row + clone-fix persistence).

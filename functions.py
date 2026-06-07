@@ -24,6 +24,41 @@ from gi.repository import GLib, Gtk  # noqa: E402
 
 # ── Paths / repo discovery ──────────────────────────────────────────
 APP_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = Path.home() / ".config" / "kiro-iso-builder"
+
+
+def default_repo_dir():
+    """Where the kiro-iso repo is cloned when the user doesn't pick a spot."""
+    return Path.home() / "kiro-iso"
+
+
+def repo_path_file():
+    return CONFIG_DIR / "repo_path"
+
+
+def saved_repo_path():
+    """The user's chosen kiro-iso repo dir (persisted), or None."""
+    f = repo_path_file()
+    if f.is_file():
+        text = f.read_text().strip()
+        if text:
+            return Path(text)
+    return None
+
+
+def save_repo_path(path):
+    """Persist the kiro-iso repo dir so discovery finds it on the next launch."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    repo_path_file().write_text(str(path) + "\n")
+
+
+def resolve_repo_dir(picked):
+    """Map a Browse selection to the repo dir: the folder itself if it already
+    holds the repo, otherwise a kiro-iso clone created under it."""
+    picked = Path(picked)
+    if (picked / "build-scripts" / "build-the-iso.sh").is_file():
+        return picked
+    return picked / "kiro-iso"
 
 
 def find_build_scripts():
@@ -32,6 +67,9 @@ def find_build_scripts():
     env = os.environ.get("KIRO_ISO_DIR")
     if env:
         candidates += [Path(env) / "build-scripts", Path(env)]
+    saved = saved_repo_path()
+    if saved:
+        candidates += [saved / "build-scripts", saved]
     candidates += [
         APP_DIR.parent / "kiro-iso" / "build-scripts",   # sibling clone (dev layout)
         Path.home() / "kiro-iso" / "build-scripts",
@@ -95,7 +133,6 @@ def package_selection_path():
     return BUILD_SCRIPTS / "package-selection.conf" if BUILD_SCRIPTS else None
 
 
-CONFIG_DIR = Path.home() / ".config" / "kiro-iso-builder"
 PROFILES_DIR = CONFIG_DIR / "profiles"
 
 
