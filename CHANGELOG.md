@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-06-08 — Never move/adopt the HQ source repo
+
+### What Changed
+- **Removed the repo-move behaviour** (`preflight_gui.py`): picking a folder no
+  longer offers to `shutil.move` an existing clone — it just points the app at
+  the chosen target and clones a fresh copy there if needed. The
+  `_confirm_move`/`_on_move_confirmed`/`_on_moved` helpers + the `shutil` import
+  are gone.
+- **Dropped the HQ-sibling auto-discovery** (`functions.py find_build_scripts`):
+  the builder no longer adopts `APP_DIR.parent/<repo>`. On the dev box that is a
+  Kiro-HQ source folder (`KIRO-ISO-CALAMARES/kiro-iso`); it now defaults to
+  `~/<repo>` instead.
+
+### Why
+- Run on **hq**, the builder discovered the sibling `KIRO-ISO-CALAMARES/kiro-iso`
+  and then *moved* it to the chosen/default spot — twice scattering the source
+  repo into `~/Music`, `~/Desktop`, `~/kiro-iso`. The builder must **never move,
+  adopt, or build inside** a Kiro-HQ source folder. It now stays entirely on
+  `~/kiro-iso` (or an explicitly chosen non-HQ location) and only ever clones.
+
+### Files Modified
+- `preflight_gui.py` — drop move helpers + `shutil` import
+- `functions.py` — drop sibling-clone discovery candidate
+
 ## 2026-06-08 — Pre-flight clarity: clone wording, grouped checks, one build folder
 
 ### What Changed — one build folder, surfaced up front (KISS)
