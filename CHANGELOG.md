@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-06-09 — Add apps page + extra-app/edition parsing (ported from nemesis)
+
+### What Changed
+- **New "Add apps" wizard step (`extras_gui.py` → `ExtrasScreen`)** — a 4th screen
+  between Packages and Build that lets the user opt **in** to apps the base ISO does
+  not ship (ticked = added), mirroring the Packages screen's opt-**out** model. The
+  wizard is now six steps: Pre-flight, Configure, Packages, Add apps, Build, Done.
+- **`functions.py`** — added the parsers/writers behind the new screen:
+  - `read_extra_apps()` + the `_EXTRA_*` regexes — discovers opt-in apps from the
+    commented `EXTRA-APP` blocks in `packages.x86_64` (the build's source of truth,
+    the same blocks `apply_package_additions()` uncomments).
+  - the additions overlay helpers — `additions_path()`, `read_additions_file()`,
+    `write_additions_file()`, `read_additions()`, `write_additions()` — managing
+    `build-scripts/package-additions.conf`.
+  - `list_editions()` — lists the WM/desktop `EDITION-BLOCK` names from
+    `packages.x86_64`.
+  - `set_conf()` now **appends** a key that isn't present yet (instead of doing
+    nothing), so newly-added build.conf knobs persist on an older live build.conf.
+- Synced the `build_gui.py`, `configure_gui.py`, `done_gui.py`, `packages_gui.py`
+  refinements from the nemesis source after live testing.
+
+### Why
+- These features matured in the nemesis (beta) builder and are ready for production.
+  The opt-in Extras page rounds out package control: Packages strips defaults, Extras
+  adds non-default apps, both driven by the same `packages.x86_64` annotations so the
+  builder never has a hardcoded app list to drift out of sync.
+
+### Technical Details
+- **Selective port, not a blanket sync.** The production repo-targeting was preserved:
+  the `--dev` switch and `REPO_NAME = "kiro-iso-next" if DEV else "kiro-iso"` /
+  `CONFIG_DIR` logic in `functions.py`, and the `fn.DEV` print + `--dev` argv strip in
+  `kiro-iso-builder.py`, were kept intact. The nemesis variant's beta-repo hardcode
+  (`REPO_NAME = "kiro-iso-next"`, no `--dev`) was deliberately **not** brought over —
+  it would make the production builder always build from the beta repo.
+
+### Files Modified
+- `extras_gui.py` (new), `kiro-iso-builder.py`, `functions.py`, `build_gui.py`,
+  `configure_gui.py`, `done_gui.py`, `packages_gui.py`, `CLAUDE.md`
+
 ## 2026-06-08 — Done screen: Burn the ISO to a USB stick (mintstick)
 
 ### What Changed
