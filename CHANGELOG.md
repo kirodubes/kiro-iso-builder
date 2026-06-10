@@ -20,16 +20,29 @@
 - **Done screen note.** Added an ATT-orange caption under the buttons: "Note: the test VM
   only boots the ISO once to check the installer — it cannot reboot into an installed
   system. Test a real install on hardware." — making the test-button behaviour explicit.
+- **Removed the hidden `--dev` mode.** The production builder no longer carries the
+  `--dev` switch that retargeted it at `kiro-iso-next` + an isolated config dir. Beta
+  builds now live in the separate `kiro-iso-builder-nemesis` package, so the dual-mode
+  branch was dead weight here. The production builder now unconditionally targets
+  `kiro-iso` with config dir `~/.config/kiro-iso-builder`.
 
 ### Technical Details
 - `_test_disk()` always `unlink()`s + recreates `~/.cache/kiro-iso-builder/kiro-test.qcow2`;
   the Done-screen checkbox is removed.
 - `kiro-iso-builder.py` registers the `Gtk.Application` before `run()` and checks
   `get_is_remote()` to detect the already-running primary.
+- `--dev` removal: dropped `DEV`/`import sys` and the `if DEV else` branches in
+  `functions.py` (`REPO_NAME`, `CONFIG_DIR`, the `/usr/share` candidate now always added),
+  and the `fn.DEV` print + `--dev` argv strip in `main()` (`app.run()` gets `sys.argv` again).
+- **Re-aligned with `kiro-iso-builder-nemesis`** afterward: the `/usr/share` candidate and
+  the `[info] targeting`/`[warn]` prints now use the `REPO_NAME`-interpolated form, so
+  `kiro-iso-builder.py` is byte-identical between the two packages and `functions.py`
+  differs only in the `REPO_NAME`/`CONFIG_DIR` constants (the intended prod-vs-beta split).
 
 ### Files Modified
 - `done_gui.py`
 - `kiro-iso-builder.py`
+- `functions.py`
 
 ---
 

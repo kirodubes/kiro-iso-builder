@@ -14,7 +14,6 @@ import shlex
 import shutil
 import struct
 import subprocess
-import sys
 import termios
 import threading
 import time
@@ -26,14 +25,11 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk  # noqa: E402
 
 # ── Paths / repo discovery ──────────────────────────────────────────
-# Hidden dev mode: `--dev` on the launch command targets kiro-iso-next and an
-# isolated config dir, so test builds never touch the production repo or state.
-DEV = "--dev" in sys.argv
-REPO_NAME = "kiro-iso-next" if DEV else "kiro-iso"
+REPO_NAME = "kiro-iso"
 REPO_URL = f"https://github.com/kirodubes/{REPO_NAME}"
 
 APP_DIR = Path(__file__).resolve().parent
-CONFIG_DIR = Path.home() / ".config" / ("kiro-iso-builder-dev" if DEV else "kiro-iso-builder")
+CONFIG_DIR = Path.home() / ".config" / "kiro-iso-builder"
 
 
 def default_repo_dir():
@@ -83,8 +79,7 @@ def find_build_scripts():
     # that's a Kiro-HQ source folder, and the builder must never adopt, build in,
     # or move it. Default to ~/<repo> — a dedicated clone location outside HQ.
     candidates.append(Path.home() / REPO_NAME / "build-scripts")
-    if not DEV:
-        candidates.append(Path("/usr/share/kiro-iso/build-scripts"))
+    candidates.append(Path("/usr/share") / REPO_NAME / "build-scripts")
     for c in candidates:
         if (c / "build-the-iso.sh").is_file():
             return c
