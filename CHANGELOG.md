@@ -14,6 +14,10 @@
 - **New "Fresh disk on each VM test" checkbox** on the Done screen (unticked by
   default). Tick it to get the old behaviour — a clean 50 GB target wiped before every
   run — for clean install tests.
+- **Launcher now reports the single-instance case.** Running `kiro-iso-builder` while a
+  window is already open used to exit silently with no new window (GTK re-focuses the
+  existing one). It now prints "Kiro ISO Builder is already running — re-focusing that
+  window. Close it first to launch a fresh instance."
 
 ### Why
 - The old "always wipe" design made "install Kiro, close QEMU, test again to boot the
@@ -28,9 +32,12 @@
   missing. `-boot order=cd` (disk-first, CD fallback) already does the rest: an empty
   disk falls through to the ISO, a disk holding an install boots straight into it.
 - VirtualBox path unchanged — it still creates a throwaway VM each run.
+- `kiro-iso-builder.py` registers the `Gtk.Application` before `run()` and checks
+  `get_is_remote()` to detect the already-running primary.
 
 ### Files Modified
 - `done_gui.py`
+- `kiro-iso-builder.py`
 
 ---
 
