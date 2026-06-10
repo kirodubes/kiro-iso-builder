@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-06-10 — QEMU test disk persists across runs ("Fresh disk" toggle)
+
+### What Changed
+- **The QEMU test disk is now reused across "Test in QEMU" runs by default**, so an
+  install made in the VM survives a reboot — the next test boots the *installed*
+  system instead of looping back into the ISO installer. Previously every click of
+  the button wiped the disk (`disk.unlink()`), silently destroying any install.
+- **New "Fresh disk on each VM test" checkbox** on the Done screen (unticked by
+  default). Tick it to get the old behaviour — a clean 50 GB target wiped before every
+  run — for clean install tests.
+
+### Why
+- The old "always wipe" design made "install Kiro, close QEMU, test again to boot the
+  installed system" impossible: the second click deleted the install. Reuse-by-default
+  matches what a user expects from a persistent VM; the toggle keeps clean-slate testing
+  one click away.
+
+### Technical Details
+- `_test_disk()` now returns the existing `~/.cache/kiro-iso-builder/kiro-test.qcow2`
+  untouched when it exists and `fresh_disk_chk` is off (logs "Reusing the existing
+  virtual disk…"); it only `unlink()`s + recreates when the box is ticked or the disk is
+  missing. `-boot order=cd` (disk-first, CD fallback) already does the rest: an empty
+  disk falls through to the ISO, a disk holding an install boots straight into it.
+- VirtualBox path unchanged — it still creates a throwaway VM each run.
+
+### Files Modified
+- `done_gui.py`
+
+---
+
 ## 2026-06-09 — Add apps page + extra-app/edition parsing (ported from nemesis)
 
 ### What Changed
@@ -24,6 +54,9 @@
     nothing), so newly-added build.conf knobs persist on an older live build.conf.
 - Synced the `build_gui.py`, `configure_gui.py`, `done_gui.py`, `packages_gui.py`
   refinements from the nemesis source after live testing.
+- **`configure_gui.py`** — dropped `lxqt` and `deepin` from the `DESKTOPS` classifier
+  set. Neither has an `EDITION-BLOCK` in `packages.x86_64`, so `list_editions()` never
+  surfaced them and they were dead entries; we are not shipping either edition.
 
 ### Why
 - These features matured in the nemesis (beta) builder and are ready for production.
