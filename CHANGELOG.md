@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-06-11 — Kernel picker, CachyOS enable, scroll-follow fix (mirrored from beta)
+
+Promoted from the `kiro-iso-builder-nemesis` beta after a kiro-next ISO was built and a
+non-default kernel (linux-lqx) selected from the new picker booted correctly.
+
+### What Changed
+- **Full kernel list + source filter + search.** The kernel dropdowns now offer every kernel
+  the repos carry (anything with a matching `-headers`), not a hardcoded five. A "Kernel
+  source" filter (All / Official Arch / CachyOS / Chaotic) tames the list, each dropdown has
+  type-to-search, and the list auto-detects on first visit (old button kept as "Refresh
+  kernels"). CachyOS is bucketed **by name** (`linux-cachyos*`) because those kernels are
+  served from both `cachyos` and `chaotic-aur`.
+- **Enable the `[cachyos]` repo on demand.** A few CachyOS flavors live only in the `cachyos`
+  repo (Kiro ships it disabled). A Configure-screen "Enable CachyOS repo" button (shown only
+  when the repo is off) and a Pre-flight offer (when a cachyos-only kernel is selected) run the
+  new `enable_cachyos` host-prep — one polkit prompt, then auto-refresh.
+- **Build-log scroll-follow fix.** The earlier scroll-lock gauged "at the bottom?" from
+  geometry each line, but the `TextView` relayouts after insert, so a fast stream broke the
+  follow latch and froze the view mid-build. Now a `_follow_tail` flag, flipped only by a real
+  user scroll, with auto-scroll reaching the true end via `GLib.idle_add` + `set_value`.
+
+### Technical Details
+- `functions.py` — new `list_kernels_with_repo()` (runs `list-kernels.sh --with-repo`).
+- `configure_gui.py` — master `(repo, kernel)` list, `_source_of()` bucketing, native
+  `Gtk.PropertyExpression` search, the conditional cachyos row wired to `run_hostprep_fix`.
+- `host_checks.py` — `check_kernels()` offers `enable_cachyos` only when a cachyos-only kernel
+  is selected while the repo is off (never nags the intentional default).
+- `build_gui.py` — follow-flag + `value-changed` handler guarded by `_auto_scrolling`.
+- Pairs with `kiro-iso/build-scripts` changes (`list-kernels.sh` broadening, `enable_cachyos`).
+
+### Files Modified
+- `configure_gui.py`, `functions.py`, `host_checks.py`, `build_gui.py`
+
 ## 2026-06-11 — Build log: scroll-lock (stay where you scrolled)
 
 ### What Changed
