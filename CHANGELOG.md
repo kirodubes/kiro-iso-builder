@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-06-15 — Localize the desktop entry
+
+### What Changed
+- Added a translated `Comment` and a new `GenericName` ("ISO Builder") to `kiro-iso-builder.desktop`
+  in 14 languages (de, fr, nl, es, it, pt_BR, pt, ru, pl, uk, zh_CN, ja, tr, cs). Brand `Name` and
+  technical `Keywords` stay English. Mirrored identically into the `-nemesis` beta repo.
+
+### Files Modified
+- `kiro-iso-builder.desktop`
+
+---
+
 ## 2026-06-11 — Kernel picker, CachyOS enable, scroll-follow fix (mirrored from beta)
 
 Promoted from the `kiro-iso-builder-nemesis` beta after a kiro-next ISO was built and a
