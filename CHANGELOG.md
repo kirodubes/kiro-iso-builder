@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-06-16 — UTF-8 / non-English locale hardening
+
+### What Changed
+- Ported the ArchLinux Tweak Tool startup UTF-8 guard so the builder never crashes on a non-UTF-8
+  system locale (latin-1 `fr_BE`, etc.) and the spawned `build-the-iso.sh` output renders cleanly in
+  the Build log view. On a UTF-8 locale (incl. `fr_FR.UTF-8`/`it_IT.UTF-8`/`es_ES.UTF-8`) the guard is
+  inert — the app was already robust there. Part of the ecosystem-wide UTF-8 robustness audit of all
+  Kiro GTK4 apps.
+
+### Technical Details
+- `kiro-iso-builder.py`: two blocks at the top of the entry point. (1) Re-exec with `-X utf8` +
+  `PYTHONUTF8=1` only when `codecs.lookup(sys.getfilesystemencoding()).name != "utf-8"` — forces UTF-8
+  for stdout, `text=True` subprocess decoding and `open()` regardless of `LANG`; loop-safe. (2) When
+  the current locale is not UTF-8, fall back to `C.UTF-8` so the build script's child output stays
+  readable. `codecs`/`os`/`sys` added; `pathlib`/`gi` imports carry `# noqa: E402`.
+- ruff + `py_compile` clean; re-exec verified under `nl_BE.iso88591` → `utf8_mode=1`. Mirror into the
+  `-nemesis` beta repo on the next sync, as with the desktop-entry change.
+
+### Files Modified
+- `kiro-iso-builder.py`
+
+---
+
 ## 2026-06-15 — Localize the desktop entry
 
 ### What Changed
