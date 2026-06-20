@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-06-20 — Edition-conditional "Extras" pages (Plasma first)
+
+### What Changed
+- Mirrored from the nemesis (beta) builder, now that the design is proven there: when an
+  edition that has scoped optional apps is ticked on Configure, a dedicated
+  **"<Edition> extras"** page appears in the sidebar (e.g. "Plasma extras" when Plasma is
+  ticked), listing only that edition's opt-in apps with nothing ticked by default. Untick the
+  edition and the page disappears. The design is edition-generic — any edition with scoped
+  EXTRA-APP blocks gets its own page with no further code change.
+- Edition-scoped apps no longer clutter the global "Add apps" page.
+- Dormant on the production builder until `kiro-iso`'s `packages.x86_64` gains scoped EXTRA-APP
+  blocks — with none present every block reads as global and behaviour is unchanged.
+
+### Technical Details
+- **Marker**: EXTRA-APP gains an optional 4th field — `… | <repo> | <editions> >>>` (absent =
+  global, unchanged). The build is untouched: `apply_package_additions()` matches on the key
+  only, so the extra field is ignored there.
+- `functions.py`: widened `_EXTRA_START_RE` for the optional editions group; `read_extra_apps()`
+  now yields `editions` per app; added `extra_app_keys(edition)`, `edition_extras()`, and
+  `reconcile_additions(catalog_keys, ticked_keys)` — the last merges one page's selection into
+  the shared additions file without clobbering other pages (catalogs are disjoint). The
+  production `REPO_NAME` (`kiro-iso`) and `CONFIG_DIR` (`kiro-iso-builder`) are kept — only the
+  feature code was mirrored, not the beta's repo/config targets.
+- `extras_gui.py`: `ExtrasScreen(window, edition=None)` — `_in_scope()` filters apps to the
+  page's scope and drops empty categories; `_save()` uses `reconcile_additions()`; nav uses the
+  new relative stepper so conditional pages slot in cleanly.
+- `kiro-iso-builder.py`: builds one hidden `ExtrasScreen` per `edition_extras()` after "Add
+  apps"; `update_edition_pages()` toggles each `StackPage.visible` from Configure's live ticks
+  (and purges a page's keys when it goes hidden); `navigate_relative()` steps Back/Continue
+  across only the visible pages. The existing UTF-8 locale re-exec guard (kib-only) is retained.
+- `configure_gui.py`: edition checkbox toggles and `_load()` now call
+  `window.update_edition_pages()` so pages appear/disappear immediately and on startup.
+- Verified: ruff clean; all four modules byte-compile.
+
+### Files Modified
+- `functions.py`, `extras_gui.py`, `configure_gui.py`, `kiro-iso-builder.py`
+
 ## 2026-06-20 — Configure screen no longer pins the window height
 
 ### What Changed
