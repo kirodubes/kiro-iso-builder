@@ -14,6 +14,8 @@
   edition and the page disappears. The design is edition-generic — any edition with scoped
   EXTRA-APP blocks gets its own page with no further code change.
 - Edition-scoped apps no longer clutter the global "Add apps" page.
+- Added a third subtitle line to every edition extras page — "Consider these a work in
+  progress." — flagging the scoped optional apps as not yet final.
 - Dormant on the production builder until `kiro-iso`'s `packages.x86_64` gains scoped EXTRA-APP
   blocks — with none present every block reads as global and behaviour is unchanged.
 
