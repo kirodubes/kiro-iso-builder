@@ -18,9 +18,18 @@
   `check_archiso_version` in the clone's `build-the-iso.sh`, so the GUI and the CLI build always agree.
   A clone without that function means no minimum, so older trees still pass.
 - The comparison uses `vercmp`, the same as the shell check.
-- The FAIL has no one-click fix on purpose: running `pacman -S archiso` alone is a partial upgrade, so the user is
-  told to run a full `pacman -Syu`.
+- The FAIL's one-click fix is a **full system upgrade**: `host-prep.sh`'s new `upgrade_system` runs
+  `pacman -Syyu --noconfirm` under pkexec, with the output streaming into the Fix log, and warns to reboot if
+  the kernel was upgraded. It is never `pacman -S archiso` alone, which would be a partial upgrade. The message
+  says the fix upgrades the whole system. This needs a kiro-iso clone that has `upgrade_system`;
+  the "up to date" check pulls it in.
+- If the clone doesn't have `upgrade_system` yet, the row says "update the kiro-iso clone first (row
+  above)" and offers no fix. Fix all never updates the clone (by design), so before this the archiso fix
+  failed without explanation on a stale clone. Found in a live test: archiso 90-1 → 91-1 worked once the
+  clone was updated. `_hostprep_has()` looks for `<func>() {` in the clone's `host-prep.sh`.
 - Tested: real 91-1 → OK; faked 90-1 → FAIL with the message; no build script → OK.
+
+Promoted from kiro-iso-builder-nemesis after a live test there (archiso 90-1 → 91-1 via the button).
 
 ### Files Modified
 - `host_checks.py`
