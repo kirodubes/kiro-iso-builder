@@ -19,6 +19,7 @@
     log folder.
   - Pre-flight's Update keeps the add-on choices (it used to reset them).
 - New test suite: `bash tests/run-tests.sh` (unit tests, build-script contract test, ruff, GUI smoke test).
+- NVIDIA driver dropdown gains **470xx** (Kepler, GTX 600/700); needs the matching kiro-iso(-next) `470xx` case.
 
 ### Technical Details
 - `build_gui.py`, `packages_gui.py`, `preflight_gui.py` and `tests/` are copied from kiro-iso-builder-nemesis.
@@ -29,6 +30,7 @@
   Against an older kiro-iso the builder simply shows no extras sections.
 
 ### Files Modified
+- `configure_gui.py`
 - `functions.py`, `build_gui.py`, `packages_gui.py`, `preflight_gui.py`, `README.md`, `tests/` (new)
 
 ---
