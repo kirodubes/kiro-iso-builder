@@ -4,6 +4,8 @@ import os
 import re
 import shutil
 import signal
+import subprocess
+import threading
 import time
 
 import gi
@@ -47,6 +49,12 @@ class BuildScreen:
         self.paths.add_css_class("dim-label")
         self.widget.append(self.paths)
 
+        # Unticked packages that will still be on the ISO, so nobody is surprised after install.
+        self.kept = Gtk.Label(xalign=0, wrap=True, max_width_chars=110, selectable=True, visible=False)
+        self.kept.add_css_class("att-orange-note")
+        self.widget.append(self.kept)
+        self._kept_lines = []
+
         bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.start_btn = Gtk.Button(label="Start build")
         self.start_btn.add_css_class("suggested-action")
@@ -55,8 +63,13 @@ class BuildScreen:
         self.stop_btn.add_css_class("destructive-action")
         self.stop_btn.set_sensitive(False)
         self.stop_btn.connect("clicked", lambda _w: self._stop())
+        self.summary_btn = Gtk.Button(label="Show summary",
+                                      tooltip_text="Open a page in your browser listing what this build "
+                                                   "removes, keeps and pulls in, and why")
+        self.summary_btn.connect("clicked", lambda _w: self._show_summary())
         bar.append(self.start_btn)
         bar.append(self.stop_btn)
+        bar.append(self.summary_btn)
         self.widget.append(bar)
 
         self.progress = Gtk.ProgressBar(show_text=True, text="idle")
@@ -94,6 +107,7 @@ class BuildScreen:
 
     def on_show(self):
         self._show_paths()
+        self._scan_kept()
         if fn.build_script() is None:
             self._log(f"{fn.REPO_NAME} clone not found — fix it on the Pre-flight screen.")
             self.start_btn.set_sensitive(False)
@@ -107,6 +121,64 @@ class BuildScreen:
         else:
             self.paths.set_text("Output location unknown — set the clone path on the Pre-flight screen.")
 
+    def _scan_kept(self):
+        excludes = fn.read_excludes()
+        editions = fn.read_conf().get("editions", "").split()
+
+        def worker():
+            kept = fn.reported_kept(excludes, editions) if excludes else {}
+            GLib.idle_add(self._show_kept, kept)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_kept(self, kept):
+        self._kept_lines = [f"{pkg} — {reason}" for pkg, reason in kept.items()]
+        if kept:
+            self.kept.set_text("Unticked but still on the ISO:\n" + "\n".join(self._kept_lines))
+        self.kept.set_visible(bool(kept))
+        return False
+
+    def _summary_args(self):
+        return fn.read_excludes(), fn.read_conf().get("editions", "").split()
+
+    def _show_summary(self):
+        self.summary_btn.set_sensitive(False)
+        self.summary_btn.set_label("Preparing…")
+        excludes, editions = self._summary_args()
+
+        def worker():
+            try:
+                path = fn.write_summary_html(fn.build_summary(excludes, editions))
+                subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                msg = f"Summary opened: {path}"
+            except Exception as exc:
+                msg = f"[warn] couldn't build the summary page: {exc}"
+            GLib.idle_add(self._on_summary_done, msg)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_summary_done(self, msg):
+        self.summary_btn.set_label("Show summary")
+        self.summary_btn.set_sensitive(True)
+        self._log(msg)
+        return False
+
+    def _save_summary_page(self, log_dir):
+        # Written at build start so each build's log folder records exactly what it was built from.
+        # The timestamped copy in the config dir sits next to the Show summary pages, where users look.
+        excludes, editions = self._summary_args()
+
+        def worker():
+            try:
+                summary = fn.build_summary(excludes, editions)
+                fn.write_summary_html(summary, log_dir / "build-summary.html")
+                path = fn.write_summary_html(summary)
+                GLib.idle_add(self._log, f"Summary saved: {path}")
+            except Exception as exc:
+                GLib.idle_add(self._log, f"[warn] couldn't save the summary page: {exc}")
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _start(self):
         script = fn.build_script()
         if script is None:
@@ -117,6 +189,8 @@ class BuildScreen:
         fn.normalize_build_location()
         self._stopping = False
         self._open_build_log()
+        if self._log_dir:
+            self._save_summary_page(self._log_dir)
         self.start_btn.set_sensitive(False)
         self.stop_btn.set_sensitive(True)
         self._set_input_enabled(True)
@@ -298,6 +372,9 @@ class BuildScreen:
                 f = iso.with_name(iso.name + "." + ext)
                 if f.is_file():
                     lines.append(f"{ext}:         {f.read_text().split()[0]}")
+        if self._kept_lines:
+            lines.append("Unticked but still on the ISO:")
+            lines += [f"  {ln}" for ln in self._kept_lines]
         fn.write_build_summary(log_dir, lines)
 
     def _latest_iso(self):

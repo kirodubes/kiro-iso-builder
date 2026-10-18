@@ -4,6 +4,35 @@
 
 ---
 
+## 2026.10.18
+
+### What Changed
+- **Promoted the nemesis builder to production.** Tested on kiro-iso-next with a KIB-built XFCE + Qtile ISO,
+  live and installed in a VM (panel plugins, unticked packages, SDDM default session all pass). New for users:
+  - Packages page: package groups fold, with counts and Expand all / Collapse all; rows that always ship are
+    hidden, and unticked packages that still ship are marked.
+  - "Show the packages that always ship" lists, in order, what ships with your editions, what ships because
+    of your editions or add-ons (with the reason), then the core.
+  - Build page: **Show summary** opens a page with what the build removes, keeps (and why) and pulls in.
+    Each summary is a timestamped `build-summary-YYYY-MM-DD-HHMM.html` in `~/.config/kiro-iso-builder/`, so
+    older ones are kept. **Start build** writes one there too, without opening it, and a copy in the build's
+    log folder.
+  - Pre-flight's Update keeps the add-on choices (it used to reset them).
+- New test suite: `bash tests/run-tests.sh` (unit tests, build-script contract test, ruff, GUI smoke test).
+
+### Technical Details
+- `build_gui.py`, `packages_gui.py`, `preflight_gui.py` and `tests/` are copied from kiro-iso-builder-nemesis.
+  `functions.py` too, except its header: `REPO_NAME = "kiro-iso"` and `CONFIG_DIR = ~/.config/kiro-iso-builder`.
+- The tests point at kiro-iso (`tests/fixture.py`, `tests/test_build_script.sh` default `KIRO_ISO_DIR`).
+- The edition extras rows and the group checks need the matching kiro-iso (`## group:` sections,
+  `apply_optional_edition_excludes`, `check_group_drift`), promoted from kiro-iso-next the same day.
+  Against an older kiro-iso the builder simply shows no extras sections.
+
+### Files Modified
+- `functions.py`, `build_gui.py`, `packages_gui.py`, `preflight_gui.py`, `README.md`, `tests/` (new)
+
+---
+
 ## 2026.10.01
 
 ### What Changed

@@ -24,7 +24,7 @@ Works on any Arch-based host (Arch, CachyOS, EndeavourOS, Garuda, …).
 2. **Configure** — `nvidia_driver`, `kernel` (two dropdowns + a **Detect** button that lists
    the host's real kernels — only those with matching `-headers`), `bump_version` and a few
    advanced knobs, written straight to `build.conf`. Headers install automatically per kernel.
-3. **Build** — live log + phase progress (auto-derived from the build script), stoppable.
+3. **Build** — live log + phase progress (auto-derived from the build script), stoppable. **Show summary** opens a browser page listing what the build removes, keeps (and why) and pulls in.
 4. **Done** — open `~/kiro-Out`, show checksums, boot the ISO in QEMU.
 
 ## Run from source
@@ -36,6 +36,11 @@ python3 kiro-iso-builder.py
 The app finds the `kiro-iso` repo automatically when it sits beside this one, at
 `~/kiro-iso`, or `/usr/share/kiro-iso`. Override with `KIRO_ISO_DIR=/path/to/kiro-iso`.
 If it isn't found, the Pre-flight screen can clone it.
+
+## Tests
+
+`bash tests/run-tests.sh` runs the unit tests, a contract test against `build-the-iso.sh`, ruff and a GUI
+smoke test (when a desktop session is available).
 
 ## Requirements
 

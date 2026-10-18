@@ -7,6 +7,7 @@ specific user, home path, or distro — it works on any Arch-based system.
 """
 
 import fcntl
+import html
 import os
 import pty
 import re
@@ -233,21 +234,21 @@ def git_pull_ff_argv(repo):
     return ["git", "-C", str(repo), "pull", "--ff-only"]
 
 
-def git_force_update_argv(repo, selection_path):
-    """Reset the clone to its upstream, preserving the user's package selection.
+def git_force_update_argv(repo, keep_paths):
+    """Reset the clone to its upstream, preserving the user's package choices.
 
     Used when the tree is dirty (build byproducts block a fast-forward). build.conf
-    is gitignored so it survives reset untouched; package-selection.conf is tracked,
-    so it's backed up and restored around the reset.
+    is gitignored so it survives reset untouched; package-selection.conf and
+    package-additions.conf are tracked, so each is backed up and restored around the reset.
     """
     repo_q = shlex.quote(str(repo))
-    sel_q = shlex.quote(str(selection_path))
+    keep = " ".join(shlex.quote(str(p)) for p in keep_paths)
     script = (
-        f'sel={sel_q}; bak=""; '
-        f'[ -f "$sel" ] && bak="$(mktemp)" && cp "$sel" "$bak"; '
-        f'git -C {repo_q} fetch origin && git -C {repo_q} reset --hard @{{u}} || exit 1; '
-        f'[ -n "$bak" ] && cp "$bak" "$sel" && rm -f "$bak"; '
-        f'echo "Updated to the latest; your package selection was preserved."'
+        f'bak="$(mktemp -d)"; i=0; for f in {keep}; do i=$((i+1)); '
+        f'[ -f "$f" ] && cp "$f" "$bak/$i"; done; '
+        f'git -C {repo_q} fetch origin && git -C {repo_q} reset --hard @{{u}} || {{ rm -rf "$bak"; exit 1; }}; '
+        f'i=0; for f in {keep}; do i=$((i+1)); [ -f "$bak/$i" ] && cp "$bak/$i" "$f"; done; rm -rf "$bak"; '
+        f'echo "Updated to the latest; your package selection and add-ons were preserved."'
     )
     return ["bash", "-c", script]
 
@@ -444,15 +445,16 @@ def edition_extras():
 
 
 _EXCLUDE_HEADER = (
-    "# TIER 3 packages to EXCLUDE from the ISO (kiro-iso-builder package profile).\n"
+    "# Optional packages to EXCLUDE from the ISO (kiro-iso-builder package profile).\n"
     "#\n"
-    "# build-the-iso.sh's apply_package_selection() comments each one out in the\n"
-    "# build-tree copy of packages.x86_64. One package name per line; lines starting\n"
-    "# with # are ignored. An empty list ships the full TIER 3 set. This same format\n"
-    "# is build-scripts/package-selection.conf and an importable saved profile.\n"
+    "# build-the-iso.sh comments each one out in the build-tree copy of\n"
+    "# packages.x86_64: TIER 3 lines, and the lines of an edition block's\n"
+    "# \"## group: NAME optional\" section (xfce4-goodies). One package name per\n"
+    "# line; lines starting with # are ignored. An empty list ships everything.\n"
+    "# This same format is build-scripts/package-selection.conf and an importable\n"
+    "# saved profile.\n"
     "#\n"
-    "# Only TIER 3 (USER-CHANGEABLE / OPTIONAL) packages belong here — TIER 1\n"
-    "# (frozen) and TIER 2 (core) must never be excluded.\n\n"
+    "# TIER 1 (frozen), TIER 2 (core) and fixed edition packages must never be excluded.\n\n"
 )
 
 
@@ -596,6 +598,433 @@ def reconcile_additions(catalog_keys, ticked_keys):
     so each page reconciles independently."""
     kept = read_additions() - set(catalog_keys)
     return write_additions(kept | set(ticked_keys))
+
+
+# ── Packages that come back after being unticked ────────────────────
+# Unticking only comments out the TIER 3 line. A package still lands on the ISO when
+# a ticked edition block lists it, another shipped package depends on it, or it is a
+# member of a shipped package group (xfce4 → mousepad, ristretto, parole).
+def read_tiers():
+    """(tier1, tier2): uncommented FROZEN and KIRO CORE package names, source order."""
+    pf = packages_file()
+    if not pf or not pf.is_file():
+        return [], []
+    lines = pf.read_text().splitlines()
+    tiers = ([], [])
+    current = tiers[0]
+    for i, line in enumerate(lines):
+        header = i > 0 and _RULE_RE.match(lines[i - 1])
+        if header and _TIER3_MARKER in line:
+            break
+        if header and "TIER 2" in line:
+            current = tiers[1]
+        s = line.strip()
+        if s and not s.startswith("#"):
+            current.append(s)
+    return tiers
+
+
+def read_core():
+    """Uncommented TIER 1 + TIER 2 package names — the core that always ships."""
+    tier1, tier2 = read_tiers()
+    return tier1 + tier2
+
+
+# An edition block can list a package group member by member; "optional" sections can be unticked.
+_GROUP_RE = re.compile(r"^##\s+group:\s+(\S+)(\s+optional)?\s*$")
+
+
+def read_edition_optional(editions):
+    """[(category, [pkg, ...])] for the optional group sections of the ticked editions."""
+    pf = packages_file()
+    if not pf or not pf.is_file():
+        return []
+    out, block, current = [], None, None
+    for line in pf.read_text().splitlines():
+        m = re.match(r"^###\s*>>> EDITION-BLOCK (\S+) >>>", line)
+        if m:
+            block, current = m.group(1), None
+            continue
+        if line.startswith("###"):
+            block = current = None
+            continue
+        m = _GROUP_RE.match(line)
+        if m:
+            current = None
+            if block in editions and m.group(2):
+                current = (f"{block.upper()} extras ({m.group(1)})", [])
+                out.append(current)
+            continue
+        mp = _EXTRA_PKG_RE.match(line.strip())
+        if current is not None and mp:
+            current[1].append(mp.group(1))
+    return out
+
+
+def read_edition_fixed(editions):
+    """{edition: [pkg, ...]} for the lines of the ticked editions that always ship (not in an optional section)."""
+    pf = packages_file()
+    if not pf or not pf.is_file():
+        return {}
+    out, block, optional = {}, None, False
+    for line in pf.read_text().splitlines():
+        m = re.match(r"^###\s*>>> EDITION-BLOCK (\S+) >>>", line)
+        if m:
+            block, optional = m.group(1), False
+            continue
+        if line.startswith("###"):
+            block = None
+            continue
+        m = _GROUP_RE.match(line)
+        if m:
+            optional = bool(m.group(2))
+            continue
+        mp = _EXTRA_PKG_RE.match(line.strip())
+        if block in editions and mp and not optional:
+            out.setdefault(block, []).append(mp.group(1))
+    return out
+
+
+def _shipped_names(excludes, editions):
+    """{name: source} for every line that will be uncommented in the build's packages.x86_64."""
+    pf = packages_file()
+    if not pf or not pf.is_file():
+        return {}
+    ticked_extras = read_additions()
+    names, block, block_kind, optional = {}, None, None, False
+    for line in pf.read_text().splitlines():
+        m = re.match(r"^###\s*>>> EDITION-BLOCK (\S+) >>>", line)
+        if m:
+            block, block_kind, optional = m.group(1), "edition", False
+            continue
+        m = _GROUP_RE.match(line)
+        if m:
+            optional = bool(m.group(2))
+            continue
+        m = _EXTRA_START_RE.match(line)
+        if m:
+            block, block_kind = m.group(1), "extra"
+            continue
+        if re.match(r"^###\s*<<< (EDITION-BLOCK|EXTRA-APP) ", line):
+            block = block_kind = None
+            continue
+        s = line.strip()
+        if block is not None:
+            mp = _EXTRA_PKG_RE.match(s)
+            if not mp:
+                continue
+            if block_kind == "edition" and block in editions:
+                if optional and mp.group(1) in excludes:
+                    continue
+                names.setdefault(mp.group(1), f"listed by the {block} edition")
+            elif block_kind == "extra" and block in ticked_extras:
+                names.setdefault(mp.group(1), f"part of the {block} add-on")
+        elif s and not s.startswith("#") and s not in excludes:
+            names.setdefault(s, "")
+    return names
+
+
+_SYNC_DB = {}
+_CACHE_LOCK = threading.Lock()
+_DEP_NAME_RE = re.compile(r"[<>=:].*$")
+
+
+def _sync_db():
+    """{name: (depends, provides)} for the sync db, first repo wins; cached."""
+    if not _SYNC_DB:
+        name, field = None, None
+        for line in cmd_out(["env", "LC_ALL=C", "pacman", "-Si"]).splitlines():
+            key, sep, val = line.partition(" : ")
+            if sep and not key.startswith(" "):
+                field = key.strip()
+                if field == "Name":
+                    name = val.strip()
+                    if name in _SYNC_DB:
+                        name = None
+                    else:
+                        _SYNC_DB[name] = ([], [])
+                    continue
+            elif line.startswith(" "):
+                val = line
+            else:
+                continue
+            if name and field in ("Depends On", "Provides"):
+                words = [_DEP_NAME_RE.sub("", w) for w in val.split() if w != "None"]
+                _SYNC_DB[name][0 if field == "Depends On" else 1].extend(words)
+    return _SYNC_DB
+
+
+_GROUPS = {}
+
+
+def group_members():
+    """{member: group} for every sync-db package group; cached."""
+    if _GROUPS:
+        return _GROUPS
+    members = _GROUPS
+    names = cmd_out(["pacman", "-Sg"]).split()
+    for ln in cmd_out(["pacman", "-Sg", *names]).splitlines() if names else []:
+        group, _, pkg = ln.partition(" ")
+        if pkg:
+            members.setdefault(pkg, group)
+    return members
+
+
+def kept_packages(excludes, editions):
+    """{pkg: reason} for the excluded packages the ISO will still ship (or ship a variant of).
+
+    Resolves dependencies like pacman: an already-selected package satisfies a virtual
+    dependency before any other provider is pulled in. The first call is slow (two pacman
+    queries, then cached) — make it from a thread."""
+    with _CACHE_LOCK:
+        db = _sync_db()
+        groups = group_members()
+    parent = _resolve(_shipped_names(excludes, editions), excludes, db, groups)
+    kept = {}
+    for pkg in sorted(excludes):
+        if pkg in parent:
+            kept[pkg] = parent[pkg] or "listed elsewhere in packages.x86_64"
+            continue
+        names = {pkg, *db.get(pkg, ((), ()))[1]}
+        variant = next((q for q in parent if q in names or pkg in db.get(q, ((), ()))[1]), None)
+        if variant:
+            kept[pkg] = f"{variant} ships instead ({parent[variant]})"
+    return kept
+
+
+def always_shipped(row_pkgs, editions):
+    """{pkg: reason} for the optional rows that ship even with every row unticked.
+
+    Their reason is core, a ticked edition or a ticked add-on — nothing on the Packages page
+    can remove them, so the page hides them instead of offering a checkbox that does nothing."""
+    return kept_packages(set(row_pkgs), editions)
+
+
+def package_rows(editions):
+    """[(category, [pkg, ...])] for the Packages page: optional edition sections, then TIER 3.
+
+    One row per package: a name that is both an edition extra and a TIER 3 line (baobab in gnome)
+    keeps its TIER 3 row — one exclusion drops it from both places in the build."""
+    tier3 = read_tier3()
+    in_tier3 = {p for _c, pkgs in tier3 for p in pkgs}
+    extras = [(c, [p for p in pkgs if p not in in_tier3]) for c, pkgs in read_edition_optional(editions)]
+    return [(c, pkgs) for c, pkgs in extras if pkgs] + tier3
+
+
+def optional_rows(editions):
+    """Every package name the Packages page can show for these editions."""
+    return [p for _c, pkgs in package_rows(editions) for p in pkgs]
+
+
+def reported_kept(excludes, editions):
+    """kept_packages() minus the always-shipped rows the Packages page hides.
+
+    A selection saved before a row was hidden (or an imported profile) can still exclude it;
+    the Build page and the summary don't warn about a package the user can't see."""
+    hidden = always_shipped(optional_rows(editions), editions)
+    return {p: r for p, r in kept_packages(excludes, editions).items() if p not in hidden}
+
+
+def _resolve(shipped, excludes, db, groups):
+    """{pkg: reason} for every package the selection installs, dependencies included."""
+    by_group = {}
+    for m, g in groups.items():
+        by_group.setdefault(g, []).append(m)
+
+    parent = {}
+    for name, why in shipped.items():
+        # pacman installs a real package before a group of the same name.
+        if name in db or name not in by_group:
+            parent.setdefault(name, why)
+            continue
+        for pkg in by_group[name]:
+            parent.setdefault(pkg, f"part of the {name} group")
+    provided = {}
+    for pkg in parent:
+        for v in db.get(pkg, ((), ()))[1]:
+            provided.setdefault(v, pkg)
+    providers = {}
+    for pkg, (_deps, provs) in db.items():
+        for v in provs:
+            providers.setdefault(v, []).append(pkg)
+
+    queue = list(parent)
+    while queue:
+        pkg = queue.pop()
+        for dep in db.get(pkg, ((), ()))[0]:
+            if dep in parent or dep in provided:
+                continue
+            if dep in db:
+                pick = dep
+            else:
+                cands = providers.get(dep, [])
+                pick = next((c for c in cands if c not in excludes), cands[0] if cands else None)
+            if pick is None or pick in parent:
+                continue
+            parent[pick] = f"required by {pkg}"
+            for v in db[pick][1]:
+                provided.setdefault(v, pick)
+            queue.append(pick)
+    return parent
+
+
+# ── Build summary page ──────────────────────────────────────────────
+def build_summary(excludes, editions):
+    """Everything the summary page shows, as one dict. Slow on the first call — use a thread."""
+    with _CACHE_LOCK:
+        db = _sync_db()
+        groups = group_members()
+    conf = read_conf()
+    tier1, tier2 = read_tiers()
+    shipped = _shipped_names(excludes, editions)
+    all_kept = kept_packages(excludes, editions)
+    kept = reported_kept(excludes, editions)
+
+    by_block = {}
+    for name, why in shipped.items():
+        if why:
+            label = why.removeprefix("listed by the ").removeprefix("part of the ")
+            by_block.setdefault(label, []).append(name)
+
+    # Only what the user's choices add: the core's own dependencies (glibc, systemd…) are noise here.
+    full = _resolve(shipped, excludes, db, groups)
+    core_only = _resolve(dict.fromkeys(tier1 + tier2, ""), excludes, db, groups)
+    pulled_in = {p: why for p, why in sorted(full.items())
+                 if p not in core_only and p not in shipped and p not in excludes}
+
+    return {
+        "settings": {
+            "Editions": " ".join(editions) or "-",
+            "Default session": conf.get("default_session", "-"),
+            "Kernel": conf.get("kernel", "-"),
+            "NVIDIA driver": conf.get("nvidia_driver", "-"),
+        },
+        "frozen": tier1,
+        "core": tier2,
+        "blocks": by_block,
+        "removed": sorted(p for p in excludes if p not in all_kept),
+        "kept": kept,
+        "pulled_in": pulled_in,
+        "source": str(packages_file() or "?"),
+    }
+
+
+_SUMMARY_CSS = """
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1d2330; --dim:#667085; --line:#e3e6ec;
+        --green:#1a7f4b; --orange:#b45309; --blue:#2563eb; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#14171c; --card:#1d2128; --fg:#e6e9ef; --dim:#98a2b3; --line:#2c323c;
+          --green:#4ade80; --orange:#fbbf24; --blue:#60a5fa; }
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+h2 { margin: 0 0 10px; font-size: 18px; }
+.sub, footer { color: var(--dim); }
+section, details { background:var(--card); border:1px solid var(--line); border-radius:10px;
+                   padding:16px 18px; margin-top:16px; }
+summary { cursor:pointer; font-weight:600; font-size:17px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-top:12px; }
+.tile { border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.tile b { display:block; font-size:24px; }
+table.settings { width:auto; }
+.settings td:first-child { color:var(--dim); padding-right:28px; }
+footer { overflow-wrap:anywhere; }
+table { border-collapse: collapse; width:100%; }
+.rows td { padding:5px 8px; border-top:1px solid var(--line); vertical-align:top; }
+.rows td:first-child { font-family: ui-monospace, monospace; white-space:nowrap; width:1%; padding-right:24px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chips span { font-family: ui-monospace, monospace; font-size:13px; border:1px solid var(--line);
+              border-radius:6px; padding:2px 8px; }
+.removed h2 { color: var(--green); }
+.kept h2 { color: var(--orange); }
+.kept { border-left: 4px solid var(--orange); }
+.note { color: var(--dim); margin: 0 0 10px; }
+#q { width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+     background:var(--card); color:var(--fg); font-size:15px; margin-top:16px; }
+.hide { display:none !important; }
+"""
+
+_SUMMARY_JS = """
+document.getElementById('q').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('[data-text]').forEach(el =>
+    el.classList.toggle('hide', q !== '' && !el.dataset.text.includes(q)));
+  if (q) document.querySelectorAll('details').forEach(d => d.open = true);
+});
+"""
+
+
+def _summary_html(s):
+    esc = html.escape
+
+    def chips(pkgs):
+        return '<div class="chips">' + "".join(
+            f'<span data-text="{esc(p.lower())}">{esc(p)}</span>' for p in pkgs) + "</div>"
+
+    def rows(mapping):
+        return '<table class="rows">' + "".join(
+            f'<tr data-text="{esc((p + " " + why).lower())}"><td>{esc(p)}</td><td>{esc(why)}</td></tr>'
+            for p, why in mapping.items()) + "</table>"
+
+    def section(cls, title, note, body):
+        note_html = f'<p class="note">{note}</p>' if note else ""
+        return f'<section class="{cls}"><h2>{title}</h2>{note_html}{body}</section>'
+
+    def folded(title, note, body):
+        return f'<details><summary>{title}</summary><p class="note">{note}</p>{body}</details>'
+
+    tiles = [("Frozen", len(s["frozen"])), ("Core", len(s["core"])), ("Removed", len(s["removed"])),
+             ("Comes back", len(s["kept"])), ("Pulled in", len(s["pulled_in"]))]
+    settings = "".join(f"<tr><td>{esc(k)}</td><td>{esc(v)}</td></tr>" for k, v in s["settings"].items())
+    parts = [
+        "<h1>Kiro ISO build summary</h1>",
+        '<p class="sub">What this build puts on the ISO, and why.</p>',
+        f'<section><h2>This build</h2><table class="settings">{settings}</table>'
+        '<div class="tiles">' + "".join(f"<div class=\"tile\"><b>{n}</b>{t}</div>" for t, n in tiles)
+        + "</div></section>",
+        '<input id="q" type="search" placeholder="Search packages or reasons...">',
+    ]
+    parts.append(section(
+        "removed", f"Removed ({len(s['removed'])})",
+        "You unticked these and nothing else needs them, so they are not on the ISO.",
+        chips(s["removed"]) if s["removed"] else "<p>Nothing removed.</p>"))
+    parts.append(section(
+        "kept", f"Comes back anyway ({len(s['kept'])})",
+        "You unticked these, but they still ship. The reason is on the right.",
+        rows(s["kept"]) if s["kept"] else "<p>Every unticked package is really gone.</p>"))
+    for label, pkgs in s["blocks"].items():
+        parts.append(section("", f"{esc(label[0].upper() + label[1:])} ({len(pkgs)})", "", chips(pkgs)))
+    parts.append(folded(
+        f"Pulled in by your choices ({len(s['pulled_in'])})",
+        "Dependencies of your editions, add-ons and optional apps that the core alone would not bring.",
+        rows(s["pulled_in"])))
+    parts.append(folded(
+        f"Frozen, TIER 1 ({len(s['frozen'])})",
+        "Always ship. Removing any of these breaks the build, the live boot or the installer.",
+        chips(s["frozen"])))
+    parts.append(folded(
+        f"Core, TIER 2 ({len(s['core'])})",
+        "Always ship. The base of every Kiro system.",
+        chips(s["core"])))
+    parts.append(f"<footer><p>Generated {esc(time.strftime('%Y-%m-%d %H:%M'))} from {esc(s['source'])}</p></footer>")
+
+    return ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+            f"<title>Kiro ISO build summary</title><style>{_SUMMARY_CSS}</style></head>"
+            f"<body><main>{''.join(parts)}</main><script>{_SUMMARY_JS}</script></body></html>\n")
+
+
+def write_summary_html(summary, path=None):
+    """Write the summary page and return its path.
+
+    Default: a timestamped file in the config dir (build-summary-YYYY-MM-DD-HHMM.html), so older
+    summaries are kept next to the new one."""
+    path = Path(path) if path else CONFIG_DIR / f"build-summary-{time.strftime('%Y-%m-%d-%H%M')}.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_summary_html(summary))
+    return path
 
 
 # ── Runner 1: pipe (pkexec fixes, clone) — non-tty is fine ──────────
