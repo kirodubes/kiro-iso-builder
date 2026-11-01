@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kiro-iso-builder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 07:09+0100\n"
+"POT-Creation-Date: 2026-11-01 07:56+0100\n"
 "PO-Revision-Date: 2026-11-01 06:14+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Kiro translations\n"
@@ -221,7 +221,7 @@ msgstr "── ビルドフォルダーを削除できませんでした（終�
 msgid "Remove failed (exit {code})"
 msgstr "削除に失敗しました（終了コード {code}）"
 
-#: build_gui.py:323
+#: build_gui.py:323 functions.py:1079 functions.py:1100
 msgid "Removed"
 msgstr "削除しました"
 
@@ -256,7 +256,7 @@ msgstr ""
 "これらの設定は build.conf に直接書き込まれます。CLI も同じファイルを使用しま"
 "す。"
 
-#: configure_gui.py:78
+#: configure_gui.py:78 functions.py:939
 msgid "NVIDIA driver"
 msgstr "NVIDIA ドライバー"
 
@@ -684,19 +684,121 @@ msgid_plural "Imported app list; {count} apps marked to add."
 msgstr[0] ""
 "一覧をインポートしました。{count} 個のアプリを追加対象に選択しました。"
 
-#: functions.py:1284
+#: functions.py:936
+msgid "Editions"
+msgstr "エディション"
+
+#: functions.py:937
+msgid "Default session"
+msgstr "既定のセッション"
+
+#: functions.py:938
+msgid "Kernel"
+msgstr "カーネル"
+
+#: functions.py:1079
+msgid "Core"
+msgstr "コア"
+
+#: functions.py:1079
+msgid "Frozen"
+msgstr "固定"
+
+#: functions.py:1080
+msgid "Comes back"
+msgstr "戻るもの"
+
+#: functions.py:1080
+msgid "Pulled in"
+msgstr "追加で入るもの"
+
+#: functions.py:1082
+msgid "Search packages or reasons..."
+msgstr "パッケージや理由を検索…"
+
+#: functions.py:1088
+msgid "Kiro ISO build summary"
+msgstr "Kiro ISO ビルドの概要"
+
+#: functions.py:1089
+msgid "What this build puts on the ISO, and why."
+msgstr "このビルドが ISO に入れるものとその理由。"
+
+#: functions.py:1092
+msgid "This build"
+msgstr "このビルド"
+
+#: functions.py:1101
+msgid ""
+"You unticked these and nothing else needs them, so they are not on the ISO."
+msgstr "選択を外し、ほかに必要とするものもないため、ISO には入りません。"
+
+#: functions.py:1102
+msgid "Nothing removed."
+msgstr "削除されたものはありません。"
+
+#: functions.py:1104
+msgid "Comes back anyway"
+msgstr "それでも戻るもの"
+
+#: functions.py:1105
+msgid "You unticked these, but they still ship. The reason is on the right."
+msgstr "選択を外しましたが、それでも ISO に入ります。理由は右側にあります。"
+
+#: functions.py:1106
+msgid "Every unticked package is really gone."
+msgstr "選択を外したパッケージはすべて本当に削除されています。"
+
+#: functions.py:1110
+msgid "Pulled in by your choices"
+msgstr "選択によって追加で入るもの"
+
+#: functions.py:1111
+msgid ""
+"Dependencies of your editions, add-ons and optional apps that the core alone "
+"would not bring."
+msgstr ""
+"コアだけでは入らない、エディション・アドオン・オプションアプリの依存パッケー"
+"ジです。"
+
+#: functions.py:1114
+msgid "Frozen, TIER 1"
+msgstr "固定、TIER 1"
+
+#: functions.py:1115
+msgid ""
+"Always ship. Removing any of these breaks the build, the live boot or the "
+"installer."
+msgstr ""
+"常に入ります。どれかを削除すると、ビルド、ライブ起動、またはインストーラーが"
+"壊れます。"
+
+#: functions.py:1118
+msgid "Core, TIER 2"
+msgstr "コア、TIER 2"
+
+#: functions.py:1119
+msgid "Always ship. The base of every Kiro system."
+msgstr "常に入ります。すべての Kiro システムの土台です。"
+
+#: functions.py:1121
+#, python-brace-format
+msgid "Generated {date} from {source}"
+msgstr "{date} に {source} から生成"
+
+#: functions.py:1360
 msgid "Authentication required"
 msgstr "認証が必要です"
 
-#: functions.py:1285 preflight_gui.py:298
+#: functions.py:1361 preflight_gui.py:298
 msgid "Cancel"
 msgstr "キャンセル"
 
-#: functions.py:1286
+#: functions.py:1362
 msgid "Authenticate"
 msgstr "認証"
 
-#: functions.py:1294
+#: functions.py:1370
 msgid "Enter your password"
 msgstr "パスワードを入力"
 

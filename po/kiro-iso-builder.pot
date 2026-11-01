@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 07:09+0100\n"
+"POT-Creation-Date: 2026-11-01 07:56+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -218,7 +218,7 @@ msgstr ""
 msgid "Remove failed (exit {code})"
 msgstr ""
 
-#: build_gui.py:323
+#: build_gui.py:323 functions.py:1079 functions.py:1100
 msgid "Removed"
 msgstr ""
 
@@ -251,7 +251,7 @@ msgstr ""
 msgid "These write straight to build.conf; the CLI uses the same file."
 msgstr ""
 
-#: configure_gui.py:78
+#: configure_gui.py:78 functions.py:939
 msgid "NVIDIA driver"
 msgstr ""
 
@@ -645,19 +645,117 @@ msgid_plural "Imported app list; {count} apps marked to add."
 msgstr[0] ""
 msgstr[1] ""
 
-#: functions.py:1284
+#: functions.py:936
+msgid "Editions"
+msgstr ""
+
+#: functions.py:937
+msgid "Default session"
+msgstr ""
+
+#: functions.py:938
+msgid "Kernel"
+msgstr ""
+
+#: functions.py:1079
+msgid "Core"
+msgstr ""
+
+#: functions.py:1079
+msgid "Frozen"
+msgstr ""
+
+#: functions.py:1080
+msgid "Comes back"
+msgstr ""
+
+#: functions.py:1080
+msgid "Pulled in"
+msgstr ""
+
+#: functions.py:1082
+msgid "Search packages or reasons..."
+msgstr ""
+
+#: functions.py:1088
+msgid "Kiro ISO build summary"
+msgstr ""
+
+#: functions.py:1089
+msgid "What this build puts on the ISO, and why."
+msgstr ""
+
+#: functions.py:1092
+msgid "This build"
+msgstr ""
+
+#: functions.py:1101
+msgid ""
+"You unticked these and nothing else needs them, so they are not on the ISO."
+msgstr ""
+
+#: functions.py:1102
+msgid "Nothing removed."
+msgstr ""
+
+#: functions.py:1104
+msgid "Comes back anyway"
+msgstr ""
+
+#: functions.py:1105
+msgid "You unticked these, but they still ship. The reason is on the right."
+msgstr ""
+
+#: functions.py:1106
+msgid "Every unticked package is really gone."
+msgstr ""
+
+#: functions.py:1110
+msgid "Pulled in by your choices"
+msgstr ""
+
+#: functions.py:1111
+msgid ""
+"Dependencies of your editions, add-ons and optional apps that the core alone "
+"would not bring."
+msgstr ""
+
+#: functions.py:1114
+msgid "Frozen, TIER 1"
+msgstr ""
+
+#: functions.py:1115
+msgid ""
+"Always ship. Removing any of these breaks the build, the live boot or the "
+"installer."
+msgstr ""
+
+#: functions.py:1118
+msgid "Core, TIER 2"
+msgstr ""
+
+#: functions.py:1119
+msgid "Always ship. The base of every Kiro system."
+msgstr ""
+
+#: functions.py:1121
+#, python-brace-format
+msgid "Generated {date} from {source}"
+msgstr ""
+
+#: functions.py:1360
 msgid "Authentication required"
 msgstr ""
 
-#: functions.py:1285 preflight_gui.py:298
+#: functions.py:1361 preflight_gui.py:298
 msgid "Cancel"
 msgstr ""
 
-#: functions.py:1286
+#: functions.py:1362
 msgid "Authenticate"
 msgstr ""
 
-#: functions.py:1294
+#: functions.py:1370
 msgid "Enter your password"
 msgstr ""
 

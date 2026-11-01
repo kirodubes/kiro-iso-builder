@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kiro-iso-builder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 07:09+0100\n"
+"POT-Creation-Date: 2026-11-01 07:56+0100\n"
 "PO-Revision-Date: 2026-11-01 06:14+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Kiro translations\n"
@@ -225,7 +225,7 @@ msgstr "── A fordítási mappa eltávolítása sikertelen (kilépési kód: 
 msgid "Remove failed (exit {code})"
 msgstr "Eltávolítás sikertelen (kilépési kód: {code})"
 
-#: build_gui.py:323
+#: build_gui.py:323 functions.py:1079 functions.py:1100
 msgid "Removed"
 msgstr "Eltávolítva"
 
@@ -260,7 +260,7 @@ msgstr ""
 "Ezek a beállítások közvetlenül a build.conf fájlba kerülnek; a parancssori "
 "felület is ezt a fájlt használja."
 
-#: configure_gui.py:78
+#: configure_gui.py:78 functions.py:939
 msgid "NVIDIA driver"
 msgstr "NVIDIA illesztőprogram"
 
@@ -697,19 +697,125 @@ msgid_plural "Imported app list; {count} apps marked to add."
 msgstr[0] "Lista importálva; {count} alkalmazás kijelölve hozzáadásra."
 msgstr[1] "Lista importálva; {count} alkalmazás kijelölve hozzáadásra."
 
-#: functions.py:1284
+#: functions.py:936
+msgid "Editions"
+msgstr "Kiadások"
+
+#: functions.py:937
+msgid "Default session"
+msgstr "Alapértelmezett munkamenet"
+
+#: functions.py:938
+msgid "Kernel"
+msgstr "Kernel"
+
+#: functions.py:1079
+msgid "Core"
+msgstr "Alap"
+
+#: functions.py:1079
+msgid "Frozen"
+msgstr "Rögzített"
+
+#: functions.py:1080
+msgid "Comes back"
+msgstr "Visszakerül"
+
+#: functions.py:1080
+msgid "Pulled in"
+msgstr "Behúzva"
+
+#: functions.py:1082
+msgid "Search packages or reasons..."
+msgstr "Csomagok vagy okok keresése…"
+
+#: functions.py:1088
+msgid "Kiro ISO build summary"
+msgstr "Kiro ISO build összegzés"
+
+#: functions.py:1089
+msgid "What this build puts on the ISO, and why."
+msgstr "Mit tesz ez a build az ISO-ra, és miért."
+
+#: functions.py:1092
+msgid "This build"
+msgstr "Ez a build"
+
+#: functions.py:1101
+msgid ""
+"You unticked these and nothing else needs them, so they are not on the ISO."
+msgstr ""
+"Ezeket kijelölés nélkül hagytad, és semmi más nem igényli őket, így "
+"nincsenek az ISO-n."
+
+#: functions.py:1102
+msgid "Nothing removed."
+msgstr "Semmi sincs eltávolítva."
+
+#: functions.py:1104
+msgid "Comes back anyway"
+msgstr "Mégis visszakerül"
+
+#: functions.py:1105
+msgid "You unticked these, but they still ship. The reason is on the right."
+msgstr ""
+"Ezeket kijelölés nélkül hagytad, de mégis rákerülnek. Az ok jobb oldalon "
+"látható."
+
+#: functions.py:1106
+msgid "Every unticked package is really gone."
+msgstr "Minden kijelöletlen csomag tényleg eltűnt."
+
+#: functions.py:1110
+msgid "Pulled in by your choices"
+msgstr "A választásaid által behúzva"
+
+#: functions.py:1111
+msgid ""
+"Dependencies of your editions, add-ons and optional apps that the core alone "
+"would not bring."
+msgstr ""
+"A kiadásaid, kiegészítőid és opcionális alkalmazásaid függőségei, amelyeket "
+"az alap egymagában nem hozna."
+
+#: functions.py:1114
+msgid "Frozen, TIER 1"
+msgstr "Rögzített, TIER 1"
+
+#: functions.py:1115
+msgid ""
+"Always ship. Removing any of these breaks the build, the live boot or the "
+"installer."
+msgstr ""
+"Mindig rákerülnek. Bármelyik eltávolítása tönkreteszi a buildet, az élő "
+"indítást vagy a telepítőt."
+
+#: functions.py:1118
+msgid "Core, TIER 2"
+msgstr "Alap, TIER 2"
+
+#: functions.py:1119
+msgid "Always ship. The base of every Kiro system."
+msgstr "Mindig rákerülnek. Minden Kiro rendszer alapja."
+
+#: functions.py:1121
+#, python-brace-format
+msgid "Generated {date} from {source}"
+msgstr "Készült: {date}, forrás: {source}"
+
+#: functions.py:1360
 msgid "Authentication required"
 msgstr "Hitelesítés szükséges"
 
-#: functions.py:1285 preflight_gui.py:298
+#: functions.py:1361 preflight_gui.py:298
 msgid "Cancel"
 msgstr "Mégse"
 
-#: functions.py:1286
+#: functions.py:1362
 msgid "Authenticate"
 msgstr "Hitelesítés"
 
-#: functions.py:1294
+#: functions.py:1370
 msgid "Enter your password"
 msgstr "Írd be a jelszavadat"
 

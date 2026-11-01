@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kiro-iso-builder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 07:09+0100\n"
+"POT-Creation-Date: 2026-11-01 07:56+0100\n"
 "PO-Revision-Date: 2026-11-01 06:14+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Kiro translations\n"
@@ -230,7 +230,7 @@ msgstr ""
 msgid "Remove failed (exit {code})"
 msgstr "Échec de la suppression (code de sortie {code})"
 
-#: build_gui.py:323
+#: build_gui.py:323 functions.py:1079 functions.py:1100
 msgid "Removed"
 msgstr "Supprimé"
 
@@ -265,7 +265,7 @@ msgstr ""
 "Ces réglages sont écrits directement dans build.conf ; l’interface en ligne "
 "de commande utilise le même fichier."
 
-#: configure_gui.py:78
+#: configure_gui.py:78 functions.py:939
 msgid "NVIDIA driver"
 msgstr "Pilote NVIDIA"
 
@@ -712,19 +712,123 @@ msgid_plural "Imported app list; {count} apps marked to add."
 msgstr[0] "Liste importée ; {count} application sélectionnée pour ajout."
 msgstr[1] "Liste importée ; {count} applications sélectionnées pour ajout."
 
-#: functions.py:1284
+#: functions.py:936
+msgid "Editions"
+msgstr "Éditions"
+
+#: functions.py:937
+msgid "Default session"
+msgstr "Session par défaut"
+
+#: functions.py:938
+msgid "Kernel"
+msgstr "Noyau"
+
+#: functions.py:1079
+msgid "Core"
+msgstr "Base"
+
+#: functions.py:1079
+msgid "Frozen"
+msgstr "Figés"
+
+#: functions.py:1080
+msgid "Comes back"
+msgstr "Reviennent"
+
+#: functions.py:1080
+msgid "Pulled in"
+msgstr "Entraînés"
+
+#: functions.py:1082
+msgid "Search packages or reasons..."
+msgstr "Rechercher des paquets ou des raisons…"
+
+#: functions.py:1088
+msgid "Kiro ISO build summary"
+msgstr "Résumé de la build de l’ISO Kiro"
+
+#: functions.py:1089
+msgid "What this build puts on the ISO, and why."
+msgstr "Ce que cette build met sur l’ISO, et pourquoi."
+
+#: functions.py:1092
+msgid "This build"
+msgstr "Cette build"
+
+#: functions.py:1101
+msgid ""
+"You unticked these and nothing else needs them, so they are not on the ISO."
+msgstr ""
+"Vous les avez décochés et rien d’autre n’en a besoin : ils ne sont pas sur "
+"l’ISO."
+
+#: functions.py:1102
+msgid "Nothing removed."
+msgstr "Rien de retiré."
+
+#: functions.py:1104
+msgid "Comes back anyway"
+msgstr "Reviennent quand même"
+
+#: functions.py:1105
+msgid "You unticked these, but they still ship. The reason is on the right."
+msgstr "Vous les avez décochés, mais ils restent. La raison est à droite."
+
+#: functions.py:1106
+msgid "Every unticked package is really gone."
+msgstr "Chaque paquet décoché a vraiment disparu."
+
+#: functions.py:1110
+msgid "Pulled in by your choices"
+msgstr "Entraînés par vos choix"
+
+#: functions.py:1111
+msgid ""
+"Dependencies of your editions, add-ons and optional apps that the core alone "
+"would not bring."
+msgstr ""
+"Dépendances de vos éditions, add-ons et applications optionnelles que la "
+"base seule n’apporterait pas."
+
+#: functions.py:1114
+msgid "Frozen, TIER 1"
+msgstr "Figés, TIER 1"
+
+#: functions.py:1115
+msgid ""
+"Always ship. Removing any of these breaks the build, the live boot or the "
+"installer."
+msgstr ""
+"Toujours inclus. En retirer un casse la build, le démarrage live ou "
+"l’installateur."
+
+#: functions.py:1118
+msgid "Core, TIER 2"
+msgstr "Base, TIER 2"
+
+#: functions.py:1119
+msgid "Always ship. The base of every Kiro system."
+msgstr "Toujours inclus. La base de tout système Kiro."
+
+#: functions.py:1121
+#, python-brace-format
+msgid "Generated {date} from {source}"
+msgstr "Généré le {date} à partir de {source}"
+
+#: functions.py:1360
 msgid "Authentication required"
 msgstr "Authentification requise"
 
-#: functions.py:1285 preflight_gui.py:298
+#: functions.py:1361 preflight_gui.py:298
 msgid "Cancel"
 msgstr "Annuler"
 
-#: functions.py:1286
+#: functions.py:1362
 msgid "Authenticate"
 msgstr "S’authentifier"
 
-#: functions.py:1294
+#: functions.py:1370
 msgid "Enter your password"
 msgstr "Saisissez votre mot de passe"
 

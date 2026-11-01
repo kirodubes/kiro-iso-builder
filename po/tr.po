@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kiro-iso-builder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 07:09+0100\n"
+"POT-Creation-Date: 2026-11-01 07:56+0100\n"
 "PO-Revision-Date: 2026-11-01 06:14+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Kiro translations\n"
@@ -222,7 +222,7 @@ msgstr "── Derleme klasörü kaldırılamadı (çıkış kodu {code}) ──
 msgid "Remove failed (exit {code})"
 msgstr "Kaldırılamadı (çıkış kodu {code})"
 
-#: build_gui.py:323
+#: build_gui.py:323 functions.py:1079 functions.py:1100
 msgid "Removed"
 msgstr "Kaldırıldı"
 
@@ -257,7 +257,7 @@ msgstr ""
 "Bu ayarlar doğrudan build.conf dosyasına yazılır; CLI da aynı dosyayı "
 "kullanır."
 
-#: configure_gui.py:78
+#: configure_gui.py:78 functions.py:939
 msgid "NVIDIA driver"
 msgstr "NVIDIA sürücüsü"
 
@@ -685,19 +685,125 @@ msgid_plural "Imported app list; {count} apps marked to add."
 msgstr[0] "Liste içe aktarıldı; eklenecek {count} uygulama işaretlendi."
 msgstr[1] "Liste içe aktarıldı; eklenecek {count} uygulama işaretlendi."
 
-#: functions.py:1284
+#: functions.py:936
+msgid "Editions"
+msgstr "Sürümler"
+
+#: functions.py:937
+msgid "Default session"
+msgstr "Varsayılan oturum"
+
+#: functions.py:938
+msgid "Kernel"
+msgstr "Çekirdek"
+
+#: functions.py:1079
+msgid "Core"
+msgstr "Temel"
+
+#: functions.py:1079
+msgid "Frozen"
+msgstr "Sabit"
+
+#: functions.py:1080
+msgid "Comes back"
+msgstr "Geri gelir"
+
+#: functions.py:1080
+msgid "Pulled in"
+msgstr "Çekilen"
+
+#: functions.py:1082
+msgid "Search packages or reasons..."
+msgstr "Paket veya neden ara…"
+
+#: functions.py:1088
+msgid "Kiro ISO build summary"
+msgstr "Kiro ISO derleme özeti"
+
+#: functions.py:1089
+msgid "What this build puts on the ISO, and why."
+msgstr "Bu derlemenin ISO'ya ne koyduğu ve nedeni."
+
+#: functions.py:1092
+msgid "This build"
+msgstr "Bu derleme"
+
+#: functions.py:1101
+msgid ""
+"You unticked these and nothing else needs them, so they are not on the ISO."
+msgstr ""
+"Bunların işaretini kaldırdınız ve başka hiçbir şey onlara ihtiyaç duymuyor, "
+"bu yüzden ISO'da değiller."
+
+#: functions.py:1102
+msgid "Nothing removed."
+msgstr "Hiçbir şey kaldırılmadı."
+
+#: functions.py:1104
+msgid "Comes back anyway"
+msgstr "Yine de geri gelir"
+
+#: functions.py:1105
+msgid "You unticked these, but they still ship. The reason is on the right."
+msgstr ""
+"Bunların işaretini kaldırdınız ama yine de ISO'ya giriyorlar. Neden sağda "
+"yazıyor."
+
+#: functions.py:1106
+msgid "Every unticked package is really gone."
+msgstr "İşareti kaldırılan her paket gerçekten gitti."
+
+#: functions.py:1110
+msgid "Pulled in by your choices"
+msgstr "Seçimlerinizin çektikleri"
+
+#: functions.py:1111
+msgid ""
+"Dependencies of your editions, add-ons and optional apps that the core alone "
+"would not bring."
+msgstr ""
+"Sürümlerinizin, eklentilerinizin ve isteğe bağlı uygulamalarınızın, temelin "
+"tek başına getirmeyeceği bağımlılıkları."
+
+#: functions.py:1114
+msgid "Frozen, TIER 1"
+msgstr "Sabit, TIER 1"
+
+#: functions.py:1115
+msgid ""
+"Always ship. Removing any of these breaks the build, the live boot or the "
+"installer."
+msgstr ""
+"Her zaman dahil. Herhangi birini kaldırmak derlemeyi, canlı açılışı veya "
+"yükleyiciyi bozar."
+
+#: functions.py:1118
+msgid "Core, TIER 2"
+msgstr "Temel, TIER 2"
+
+#: functions.py:1119
+msgid "Always ship. The base of every Kiro system."
+msgstr "Her zaman dahil. Her Kiro sisteminin temeli."
+
+#: functions.py:1121
+#, python-brace-format
+msgid "Generated {date} from {source}"
+msgstr "{date} tarihinde {source} kaynağından oluşturuldu"
+
+#: functions.py:1360
 msgid "Authentication required"
 msgstr "Kimlik doğrulama gerekli"
 
-#: functions.py:1285 preflight_gui.py:298
+#: functions.py:1361 preflight_gui.py:298
 msgid "Cancel"
 msgstr "İptal"
 
-#: functions.py:1286
+#: functions.py:1362
 msgid "Authenticate"
 msgstr "Kimlik doğrula"
 
-#: functions.py:1294
+#: functions.py:1370
 msgid "Enter your password"
 msgstr "Parolanızı girin"
 
