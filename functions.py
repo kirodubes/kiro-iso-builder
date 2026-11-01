@@ -24,6 +24,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk  # noqa: E402
+from kib_i18n import _  # noqa: E402
 
 # ── Paths / repo discovery ──────────────────────────────────────────
 REPO_NAME = "kiro-iso"
@@ -1253,6 +1254,23 @@ def run_in_pty(argv, cwd, on_line, on_done, ask_password, on_start=None):
 
 
 # ── GTK password dialog, callable synchronously from a worker thread ─
+def wrap_row(*groups):
+    """Return a row of widget groups that moves whole groups to a new line when the window is narrow."""
+    # A plain Box pins the page's minimum width to the sum of its buttons (862 px in French), so on half a
+    # screen the page is clipped instead of its sentences wrapping.
+    flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=False,
+                       column_spacing=8, row_spacing=6, max_children_per_line=len(groups))
+    for i, widgets in enumerate(groups):
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for w in widgets:
+            box.append(w)
+        last = i == len(groups) - 1
+        box.set_halign(Gtk.Align.END if last and len(groups) > 1 else Gtk.Align.FILL)
+        child = Gtk.FlowBoxChild(child=box, focusable=False, hexpand=last or any(w.get_hexpand() for w in widgets))
+        flow.append(child)
+    return flow
+
+
 def ask_password(parent, prompt):
     """Show a modal password entry; block the caller until answered.
 
@@ -1263,9 +1281,9 @@ def ask_password(parent, prompt):
     done = threading.Event()
 
     def show():
-        dialog = Gtk.Dialog(title="Authentication required", transient_for=parent, modal=True)
-        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        dialog.add_button("Authenticate", Gtk.ResponseType.OK)
+        dialog = Gtk.Dialog(title=_("Authentication required"), transient_for=parent, modal=True)
+        dialog.add_button(_("Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(_("Authenticate"), Gtk.ResponseType.OK)
         dialog.set_default_response(Gtk.ResponseType.OK)
         box = dialog.get_content_area()
         box.set_margin_top(12)
@@ -1273,7 +1291,7 @@ def ask_password(parent, prompt):
         box.set_margin_start(12)
         box.set_margin_end(12)
         box.set_spacing(8)
-        box.append(Gtk.Label(label=prompt or "Enter your password", xalign=0))
+        box.append(Gtk.Label(label=prompt or _("Enter your password"), xalign=0))
         entry = Gtk.PasswordEntry(show_peek_icon=True, activates_default=True)
         box.append(entry)
 
